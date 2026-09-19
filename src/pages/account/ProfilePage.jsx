@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Paper, TextField, Button } from '@mui/material';
 import useAuthStore from '../../stores/authStore';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
-  const { customer, setCustomer } = useAuthStore();
+  const { customer, updateUser } = useAuthStore();
   const [formData, setFormData] = useState({
     firstName: customer?.firstName || '',
     lastName: customer?.lastName || '',
@@ -14,7 +14,7 @@ export default function ProfilePage() {
 
   const handleSave = (e) => {
     e.preventDefault();
-    setCustomer({ ...customer, ...formData });
+    updateUser(formData);
     toast.success('Profile updated successfully');
   };
 

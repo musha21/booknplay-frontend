@@ -1,5 +1,4 @@
-import React from 'react';
-import { Paper, Chip, Button, Skeleton } from '@mui/material';
+import { Paper, Button, Skeleton } from '@mui/material';
 import { ArrowForward, EventNote } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useUpcomingBookings } from '../../hooks/useBookings';
@@ -34,7 +33,7 @@ export default function UpcomingBookingsPage() {
               <Button
                 variant="outlined"
                 onClick={() => navigate(`/bookings/${b.id}`)}
-                endIcon=<ArrowForward />
+                endIcon={<ArrowForward />}
                 className="!text-xs !border-navy-700 !text-navy-700"
               >
                 Details

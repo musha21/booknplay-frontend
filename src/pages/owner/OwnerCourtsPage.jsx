@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   Box, Button, Card, CardContent, Dialog, DialogActions, DialogContent, DialogTitle,
@@ -24,7 +24,7 @@ export default function OwnerCourtsPage() {
     queryKey: ['public', 'sports'],
     queryFn: async () => {
       const res = await getAllSports();
-      return Array.isArray(res) ? res : (res?.data || []);
+      return Array.isArray(res) ? res : (res?.data || res?.content || []);
     },
   });
 
@@ -62,7 +62,7 @@ export default function OwnerCourtsPage() {
   };
 
   return (
-    <Box>
+    <Box className="mx-auto max-w-6xl">
       <Stack direction="row" justifyContent="space-between" className="mb-4">
         <Typography variant="h4">Courts</Typography>
         <Stack direction="row" spacing={1}>

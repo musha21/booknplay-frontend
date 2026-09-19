@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import {
   TextField,
@@ -19,10 +19,13 @@ import {
   Phone,
   Lock,
 } from '@mui/icons-material';
+import BrandLogo from '../../components/ui/BrandLogo';
+import ThemeToggle from '../../components/ui/ThemeToggle';
 
 export default function RegisterPage() {
   const { register, isRegistering } = useAuth();
-  const navigate = useNavigate();
+  const location = useLocation();
+  const bookingRedirect = location.state?.reason === 'booking' || location.state?.from?.pathname === '/checkout';
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -80,15 +83,18 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12">
+    <div className="min-h-screen bg-canvas flex items-center justify-center p-4 pb-12 pt-24 relative">
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5 sm:px-8"><BrandLogo /><ThemeToggle /></div>
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-lime-400/20 text-navy-900 mb-3">
             <SportsTennis sx={{ fontSize: 32, color: '#061032' }} />
           </div>
-          <h1 className="text-2xl font-bold text-navy-900">Create your account</h1>
+          <h1 className="text-2xl font-bold text-navy-900">{bookingRedirect ? 'Create an account to book' : 'Create your account'}</h1>
           <p className="text-slate-500 text-sm mt-1">
-            Join thousands of players booking top courts effortlessly
+            {bookingRedirect
+              ? 'Your selected slot is saved. Create a customer account to confirm it.'
+              : 'Join players booking courts across Sri Lanka'}
           </p>
         </div>
 
@@ -254,7 +260,7 @@ export default function RegisterPage() {
 
         <div className="mt-6 text-center text-sm text-slate-500">
           Already have an account?{' '}
-          <Link to="/auth/login" className="font-semibold text-navy-900 hover:text-lime-600 transition-colors">
+          <Link to="/auth/login" state={location.state} className="font-semibold text-navy-900 hover:text-lime-600 transition-colors">
             Sign In
           </Link>
         </div>

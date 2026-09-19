@@ -9,14 +9,20 @@ const apiClient = axios.create({
 });
 
 const readAuth = () => {
+  // The standalone keys are updated immediately on login/refresh. Prefer them
+  // over the persisted Zustand snapshot, which can briefly contain an older
+  // customer's token after an account switch or token refresh.
+  const storedAccessToken = localStorage.getItem('accessToken');
+  const storedRefreshToken = localStorage.getItem('refreshToken');
+
   try {
     const raw = localStorage.getItem('booknplay-auth');
     if (raw) {
       const parsed = JSON.parse(raw);
       const state = parsed?.state || parsed;
       return {
-        accessToken: state.accessToken || localStorage.getItem('accessToken'),
-        refreshToken: state.refreshToken || localStorage.getItem('refreshToken'),
+        accessToken: storedAccessToken || state.accessToken,
+        refreshToken: storedRefreshToken || state.refreshToken,
         role: state.role,
       };
     }
@@ -24,8 +30,8 @@ const readAuth = () => {
     /* ignore malformed persist blob */
   }
   return {
-    accessToken: localStorage.getItem('accessToken'),
-    refreshToken: localStorage.getItem('refreshToken'),
+    accessToken: storedAccessToken,
+    refreshToken: storedRefreshToken,
     role: null,
   };
 };

@@ -1,31 +1,32 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Box, Button, Card, CardActionArea, CardContent, Chip, IconButton, LinearProgress,
-  Stack, Switch, TextField, Typography,
+  Alert, Box, Button, Card, CardActionArea, CardContent, Chip, Dialog, DialogActions,
+  DialogContent, DialogTitle, LinearProgress, Stack, Switch, TextField, Typography,
 } from '@mui/material';
 import {
-  Add, Remove, SportsSoccer, SportsTennis, SportsCricket, Pool, Stadium, SportsBasketball,
+  Add, Casino, Pool, SportsBasketball, SportsCricket, SportsSoccer, SportsTennis,
+  SportsVolleyball,
 } from '@mui/icons-material';
 import { toast } from 'sonner';
 import LocationPicker from '../../components/owner/LocationPicker';
 import { onboardVenue } from '../../api/ownerVenues';
+import useAuthStore from '../../stores/authStore';
 
-const STEPS = ['Basic', 'Location', 'Facilities', 'Hours', 'Pricing', 'Amenities', 'Rules', 'Preview'];
+const STEPS = ['Sports', 'Location', 'Hours', 'Pricing', 'Amenities', 'Rules', 'Preview'];
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-const VENUE_TYPES = [
-  { name: 'Football', icon: <SportsSoccer /> },
-  { name: 'Badminton', icon: <SportsTennis /> },
-  { name: 'Cricket', icon: <SportsCricket /> },
-  { name: 'Tennis', icon: <SportsTennis /> },
-  { name: 'Swimming', icon: <Pool /> },
-  { name: 'Event Hall', icon: <Stadium /> },
-  { name: 'Indoor Sports', icon: <SportsBasketball /> },
-  { name: 'Other', icon: <Stadium /> },
-];
-const FACILITIES = [
-  'Football Field', 'Badminton Court', 'Cricket Ground', 'Tennis Court',
-  'Swimming Pool', 'Basketball Court', 'Volleyball Court', 'Indoor Sports', 'Event Space',
+const SPORT_CATALOG = [
+  { name: 'Indoor Cricket', resource: 'Court', icon: <SportsCricket /> },
+  { name: 'Badminton', resource: 'Court', icon: <SportsTennis /> },
+  { name: 'Futsal / Indoor Football', resource: 'Pitch', icon: <SportsSoccer /> },
+  { name: 'Basketball', resource: 'Court', icon: <SportsBasketball /> },
+  { name: 'Volleyball', resource: 'Court', icon: <SportsVolleyball /> },
+  { name: 'Table Tennis', resource: 'Table', icon: <SportsTennis /> },
+  { name: 'Squash', resource: 'Court', icon: <SportsTennis /> },
+  { name: 'Padel', resource: 'Court', icon: <SportsTennis /> },
+  { name: '8-Ball Pool', resource: 'Pool Table', icon: <Casino /> },
+  { name: 'Swimming', resource: 'Lane', icon: <Pool /> },
 ];
 const AMENITIES = [
   'Parking', 'Changing Room', 'Shower', 'Washroom', 'Drinking Water', 'Wi-Fi',
@@ -42,12 +43,17 @@ const defaultHours = () => DAYS.map((day) => ({
   closed: false,
 }));
 
+const letterNames = (resource, quantity) =>
+  Array.from({ length: quantity }, (_, i) => `${resource} ${String.fromCharCode(65 + i)}`);
+
 export default function OwnerOnboardingPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const businessName = useAuthStore((state) => state.owner?.businessName);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [basic, setBasic] = useState({ name: '', venueType: '', description: '' });
+  const [description, setDescription] = useState('');
   const [location, setLocation] = useState(null);
   const [facilities, setFacilities] = useState([]);
   const [hours, setHours] = useState(defaultHours());
@@ -55,38 +61,73 @@ export default function OwnerOnboardingPage() {
   const [amenities, setAmenities] = useState([]);
   const [rules, setRules] = useState([]);
   const [additionalRules, setAdditionalRules] = useState('');
+  const [dialogSport, setDialogSport] = useState(null);
+  const [dialogQty, setDialogQty] = useState(1);
+  const [customSportOpen, setCustomSportOpen] = useState(false);
+  const [customSport, setCustomSport] = useState({ name: '', resource: 'Court' });
 
+  const venueType = facilities.length > 1 ? 'Multi-sport' : (facilities[0]?.sportName || '');
+  const displayedSports = [
+    ...SPORT_CATALOG,
+    ...facilities
+      .filter((facility) => !SPORT_CATALOG.some((sport) => sport.name === facility.sportName))
+      .map((facility) => ({ name: facility.sportName, resource: facility.resource, icon: <SportsTennis /> })),
+  ];
   const startingPrice = useMemo(() => {
     const prices = Object.values(pricing).map((p) => Number(p.price)).filter((n) => n > 0);
     return prices.length ? Math.min(...prices) : null;
   }, [pricing]);
 
-  const toggleFacility = (name) => {
+  const openSportDialog = (sport) => {
+    const existing = facilities.find((f) => f.sportName === sport.name);
+    setDialogQty(existing?.quantity || 1);
+    setDialogSport(sport);
+  };
+
+  const confirmSportQuantity = () => {
+    if (!dialogSport) return;
+    const quantity = Math.max(1, Number(dialogQty) || 1);
+    const courtNames = letterNames(dialogSport.resource, quantity);
     setFacilities((prev) => {
-      const exists = prev.find((f) => f.sportName === name);
-      if (exists) return prev.filter((f) => f.sportName !== name);
-      return [...prev, { sportName: name, quantity: 1, courtNames: [`${name} 1`] }];
+      const next = prev.filter((f) => f.sportName !== dialogSport.name);
+      return [...next, { sportName: dialogSport.name, resource: dialogSport.resource, quantity, courtNames }];
     });
     setPricing((prev) => ({
       ...prev,
-      [name]: prev[name] || { price: '1500', durationMinutes: 60 },
+      [dialogSport.name]: prev[dialogSport.name] || { price: '1500', durationMinutes: 60 },
     }));
+    setDialogSport(null);
   };
 
-  const updateQuantity = (name, delta) => {
-    setFacilities((prev) => prev.map((f) => {
-      if (f.sportName !== name) return f;
-      const quantity = Math.max(1, f.quantity + delta);
-      const courtNames = Array.from({ length: quantity }, (_, i) => f.courtNames[i] || `${name} ${i + 1}`);
-      return { ...f, quantity, courtNames };
-    }));
+  const removeSport = () => {
+    if (!dialogSport) return;
+    setFacilities((prev) => prev.filter((f) => f.sportName !== dialogSport.name));
+    setDialogSport(null);
+  };
+
+  const addCustomSport = () => {
+    const name = customSport.name.trim();
+    const resource = customSport.resource.trim() || 'Court';
+    if (!name) return;
+    if (SPORT_CATALOG.some((sport) => sport.name.toLowerCase() === name.toLowerCase())) {
+      setError(`${name} is already available in the sport list`);
+      return;
+    }
+    if (facilities.some((facility) => facility.sportName.toLowerCase() === name.toLowerCase())) {
+      setError(`${name} has already been added`);
+      return;
+    }
+    setError('');
+    setCustomSportOpen(false);
+    setCustomSport({ name: '', resource: 'Court' });
+    openSportDialog({ name, resource, icon: <SportsTennis /> });
   };
 
   const validate = () => {
-    if (step === 0 && (!basic.name.trim() || !basic.venueType)) return 'Venue name and type are required';
+    if (step === 0 && facilities.length === 0) return 'Select at least one sport';
+    if (step === 0 && facilities.some((f) => !f.quantity || f.quantity < 1)) return 'Each sport needs at least 1 court';
     if (step === 1 && (!location?.formattedAddress || location.latitude == null)) return 'Select a map location';
-    if (step === 2 && facilities.length === 0) return 'Select at least one facility';
-    if (step === 4 && facilities.some((f) => !Number(pricing[f.sportName]?.price))) return 'Set a price for each facility';
+    if (step === 3 && facilities.some((f) => !Number(pricing[f.sportName]?.price))) return 'Set a price for each sport';
     return '';
   };
 
@@ -115,9 +156,8 @@ export default function OwnerOnboardingPage() {
     setError('');
     try {
       await onboardVenue({
-        name: basic.name,
-        venueType: basic.venueType,
-        description: basic.description,
+        venueType,
+        description,
         formattedAddress: location.formattedAddress,
         city: location.city,
         latitude: location.latitude,
@@ -139,19 +179,30 @@ export default function OwnerOnboardingPage() {
         rulePresets: rules,
         additionalRules,
       });
-      toast.success('Venue submitted for approval');
+      toast.success('Venue is live on the landing page');
+      await queryClient.invalidateQueries({ queryKey: ['venues'] });
+      await queryClient.invalidateQueries({ queryKey: ['sports'] });
+      await queryClient.invalidateQueries({ queryKey: ['owner', 'venues'] });
       navigate('/owner');
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not create venue');
+      if (err.response?.status === 403) {
+        setError('Your signed-in account is not allowed to create venues. Sign out and sign in with a business-owner account.');
+      } else {
+        setError(err.response?.data?.message || 'Could not create venue');
+      }
     } finally {
       setSaving(false);
     }
   };
 
+  const selectedSport = dialogSport
+    ? facilities.find((f) => f.sportName === dialogSport.name)
+    : null;
+
   return (
-    <Box>
-      <Typography variant="overline" color="text.secondary">Step {step + 1} of 8</Typography>
-      <LinearProgress variant="determinate" value={((step + 1) / 8) * 100} className="!mb-3 !rounded-full" />
+    <Box className="mx-auto max-w-5xl surface-card p-5 sm:p-8">
+      <Typography variant="overline" color="text.secondary">Step {step + 1} of {STEPS.length}</Typography>
+      <LinearProgress variant="determinate" value={((step + 1) / STEPS.length) * 100} className="!mb-3 !rounded-full" />
       <Stack direction="row" spacing={1} className="mb-6 overflow-x-auto">
         {STEPS.map((label, i) => (
           <Chip key={label} size="small" label={label} color={i === step ? 'primary' : 'default'} variant={i <= step ? 'filled' : 'outlined'} />
@@ -161,23 +212,38 @@ export default function OwnerOnboardingPage() {
 
       {step === 0 && (
         <Stack spacing={2}>
-          <Typography variant="h4">Create Your Venue</Typography>
-          <Typography color="text.secondary">Let's get your venue ready for bookings.</Typography>
-          <TextField label="Venue Name" required value={basic.name} onChange={(e) => setBasic({ ...basic, name: e.target.value })} />
-          <Typography variant="subtitle2">Venue Type</Typography>
-          <Box className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {VENUE_TYPES.map((type) => (
-              <Card key={type.name} variant={basic.venueType === type.name ? 'elevation' : 'outlined'} className={basic.venueType === type.name ? '!border-2 !border-lime-500' : ''}>
-                <CardActionArea onClick={() => setBasic({ ...basic, venueType: type.name })}>
-                  <CardContent className="text-center">
-                    {type.icon}
-                    <Typography variant="body2" fontWeight={700}>{type.name}</Typography>
-                  </CardContent>
-                </CardActionArea>
-              </Card>
-            ))}
+          <Typography variant="h4">Which sports can customers book?</Typography>
+          <Typography color="text.secondary">Select every sport you offer. Each click asks how many courts, pitches, or tables to create (named A, B, C…).</Typography>
+          <Box className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {displayedSports.map((sport) => {
+              const selected = facilities.find((f) => f.sportName === sport.name);
+              return (
+                <Card key={sport.name} variant="outlined" className={`h-full transition-colors ${selected ? '!border-2 !border-lime-500 !bg-lime-50 dark:!bg-lime-950/20' : ''}`}>
+                  <CardActionArea onClick={() => openSportDialog(sport)} className="!h-full">
+                    <CardContent className="flex min-h-44 flex-col items-center justify-center !p-4 text-center">
+                      <Box className={`mb-2 flex h-10 w-10 items-center justify-center rounded-full ${selected ? 'bg-lime-300 text-navy-900' : 'bg-slate-100 text-muted dark:bg-navy-800'}`}>{sport.icon}</Box>
+                      <Typography variant="body2" fontWeight={700} className="min-h-10 content-center">{sport.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">{sport.resource}</Typography>
+                      <Box className="mt-2 flex h-6 items-center">
+                        {selected && <Chip size="small" color="secondary" label={`${selected.quantity} ${sport.resource}${selected.quantity === 1 ? '' : 's'}`} />}
+                      </Box>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+              );
+            })}
+            <Card variant="outlined" className="h-full !border-dashed">
+              <CardActionArea onClick={() => setCustomSportOpen(true)} className="!h-full">
+                <CardContent className="flex min-h-44 flex-col items-center justify-center !p-4 text-center">
+                  <Box className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-muted dark:bg-navy-800"><Add /></Box>
+                  <Typography variant="body2" fontWeight={700}>Add another sport</Typography>
+                  <Typography variant="caption" color="text.secondary">Not listed above</Typography>
+                  <Box className="mt-2 h-6" />
+                </CardContent>
+              </CardActionArea>
+            </Card>
           </Box>
-          <TextField label="Short Description" multiline minRows={3} value={basic.description} onChange={(e) => setBasic({ ...basic, description: e.target.value })} />
+          <TextField label="Short Description" multiline minRows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
         </Stack>
       )}
 
@@ -189,53 +255,6 @@ export default function OwnerOnboardingPage() {
       )}
 
       {step === 2 && (
-        <Stack spacing={2}>
-          <Typography variant="h4">What can customers book?</Typography>
-          <Box className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {FACILITIES.map((name) => {
-              const selected = facilities.find((f) => f.sportName === name);
-              return (
-                <Card key={name} variant={selected ? 'elevation' : 'outlined'}>
-                  <CardActionArea onClick={() => toggleFacility(name)}>
-                    <CardContent>
-                      <Typography fontWeight={700}>{name}</Typography>
-                    </CardContent>
-                  </CardActionArea>
-                  {selected && (
-                    <Box className="px-3 pb-3">
-                      <Typography variant="caption">Number of courts</Typography>
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <IconButton size="small" onClick={() => updateQuantity(name, -1)}><Remove /></IconButton>
-                        <Typography>{selected.quantity}</Typography>
-                        <IconButton size="small" onClick={() => updateQuantity(name, 1)}><Add /></IconButton>
-                      </Stack>
-                      {selected.courtNames.map((court, idx) => (
-                        <TextField
-                          key={`${name}-${idx}`}
-                          size="small"
-                          fullWidth
-                          className="!mt-1"
-                          value={court}
-                          onChange={(e) => {
-                            setFacilities((prev) => prev.map((f) => {
-                              if (f.sportName !== name) return f;
-                              const courtNames = [...f.courtNames];
-                              courtNames[idx] = e.target.value;
-                              return { ...f, courtNames };
-                            }));
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  )}
-                </Card>
-              );
-            })}
-          </Box>
-        </Stack>
-      )}
-
-      {step === 3 && (
         <Stack spacing={2}>
           <Typography variant="h4">When can customers book?</Typography>
           <Button onClick={applySameHours}>Use same hours for all days</Button>
@@ -262,12 +281,13 @@ export default function OwnerOnboardingPage() {
         </Stack>
       )}
 
-      {step === 4 && (
+      {step === 3 && (
         <Stack spacing={2}>
           <Typography variant="h4">Set your pricing</Typography>
           {facilities.map((f) => (
             <Card key={f.sportName} className="p-4">
               <Typography fontWeight={700}>{f.sportName}</Typography>
+              <Typography variant="caption">{f.courtNames.join(', ')}</Typography>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} className="mt-2">
                 <TextField label="Price (LKR)" type="number" value={pricing[f.sportName]?.price || ''} onChange={(e) => setPricing({ ...pricing, [f.sportName]: { ...pricing[f.sportName], price: e.target.value } })} />
                 <TextField label="Duration (minutes)" type="number" value={pricing[f.sportName]?.durationMinutes || 60} onChange={(e) => setPricing({ ...pricing, [f.sportName]: { ...pricing[f.sportName], durationMinutes: e.target.value } })} />
@@ -277,7 +297,7 @@ export default function OwnerOnboardingPage() {
         </Stack>
       )}
 
-      {step === 5 && (
+      {step === 4 && (
         <Stack spacing={2}>
           <Typography variant="h4">What does your venue offer?</Typography>
           <Box className="flex flex-wrap gap-2">
@@ -288,7 +308,7 @@ export default function OwnerOnboardingPage() {
         </Stack>
       )}
 
-      {step === 6 && (
+      {step === 5 && (
         <Stack spacing={2}>
           <Typography variant="h4">Set venue rules</Typography>
           <Box className="flex flex-wrap gap-2">
@@ -300,16 +320,16 @@ export default function OwnerOnboardingPage() {
         </Stack>
       )}
 
-      {step === 7 && (
+      {step === 6 && (
         <Card className="p-6">
-          <Typography variant="h4">{basic.name || 'Your venue'}</Typography>
+          <Typography variant="h4">{businessName && venueType ? `${businessName} - ${venueType}` : venueType || 'Your venue'}</Typography>
           <Typography className="!mt-1">📍 {location?.formattedAddress}</Typography>
-          <Typography className="!mt-2">{basic.venueType} {facilities.map((f) => f.sportName).join(' · ')}</Typography>
-          <Chip label="New Venue" className="!mt-2" />
+          <Typography className="!mt-2">{facilities.map((f) => f.sportName).join(' · ')}</Typography>
+          <Chip label="Live" color="success" className="!mt-2" />
           <Typography variant="h6" className="!mt-4">From LKR {startingPrice ? Number(startingPrice).toLocaleString() : '—'} / hour</Typography>
           <Typography variant="subtitle2" className="!mt-4">Facilities</Typography>
           {facilities.flatMap((f) => f.courtNames.map((c, i) => (
-            <Typography key={`${f.sportName}-${i}`} variant="body2">• {c}</Typography>
+            <Typography key={`${f.sportName}-${i}`} variant="body2">• {f.sportName}: {c}</Typography>
           )))}
           <Typography variant="subtitle2" className="!mt-3">Amenities</Typography>
           <Typography variant="body2">{amenities.join(', ') || 'None yet'}</Typography>
@@ -320,7 +340,7 @@ export default function OwnerOnboardingPage() {
 
       <Box className="mt-6 flex justify-between">
         <Button disabled={step === 0 || saving} onClick={() => setStep((s) => s - 1)}>Back</Button>
-        {step < 7 ? (
+        {step < STEPS.length - 1 ? (
           <Button variant="contained" onClick={next}>Continue</Button>
         ) : (
           <Stack direction="row" spacing={1}>
@@ -329,6 +349,46 @@ export default function OwnerOnboardingPage() {
           </Stack>
         )}
       </Box>
+
+      <Dialog open={Boolean(dialogSport)} onClose={() => setDialogSport(null)} fullWidth maxWidth="xs">
+        <DialogTitle>{dialogSport?.name}</DialogTitle>
+        <DialogContent>
+          <Typography className="!mb-3" color="text.secondary">
+            How many {dialogSport?.resource?.toLowerCase()}s should customers be able to book?
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            type="number"
+            label={`Number of ${dialogSport?.resource}s`}
+            inputProps={{ min: 1, max: 26 }}
+            value={dialogQty}
+            onChange={(e) => setDialogQty(Math.max(1, Number(e.target.value) || 1))}
+          />
+          {dialogQty > 0 && dialogSport && (
+            <Typography variant="body2" className="!mt-3" color="text.secondary">
+              Names: {letterNames(dialogSport.resource, Math.max(1, Number(dialogQty) || 1)).join(', ')}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {selectedSport && <Button color="error" onClick={removeSport}>Remove</Button>}
+          <Button onClick={() => setDialogSport(null)}>Cancel</Button>
+          <Button variant="contained" onClick={confirmSportQuantity}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={customSportOpen} onClose={() => setCustomSportOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Add another sport</DialogTitle>
+        <DialogContent className="flex flex-col gap-3 !pt-2">
+          <TextField autoFocus label="Sport name" placeholder="e.g. Pickleball" value={customSport.name} onChange={(e) => setCustomSport({ ...customSport, name: e.target.value })} />
+          <TextField label="Facility type" placeholder="e.g. Court, Pitch, Table" value={customSport.resource} onChange={(e) => setCustomSport({ ...customSport, resource: e.target.value })} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCustomSportOpen(false)}>Cancel</Button>
+          <Button variant="contained" disabled={!customSport.name.trim()} onClick={addCustomSport}>Continue</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

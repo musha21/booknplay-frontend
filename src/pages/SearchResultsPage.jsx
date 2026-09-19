@@ -1,196 +1,76 @@
-import React, { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import {
-  Container, Grid, Card, CardContent, Button, TextField, Select, MenuItem, FormControl,
-  InputLabel, Chip, Skeleton, Divider, Paper
-} from '@mui/material';
-import {
-  Search, LocationOn, FilterList, Map, SportsSoccer
-} from '@mui/icons-material';
-import {
-  useVenues, useSports
-} from '../hooks/useVenues';
+import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Button, MenuItem, Skeleton, TextField } from '@mui/material';
+import { FilterList, Search, SportsSoccer } from '@mui/icons-material';
+import { useSports, useVenues } from '../hooks/useVenues';
+import VenueCard from '../components/ui/VenueCard';
+import EmptyState from '../components/ui/EmptyState';
+import { buildVenueSearchParams } from '../utils/searchParams';
 
 export default function SearchResultsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const [sportId, setSportId] = useState(params.get('sportId') || '');
+  const [city, setCity] = useState(params.get('city') || '');
+  const [name, setName] = useState(params.get('name') || '');
+  const sports = useSports().data || [];
+  const queryParams = useMemo(() => ({
+    sportId: params.get('sportId') || undefined,
+    city: params.get('city') || undefined,
+    name: params.get('name') || undefined,
+    size: 24,
+    sort: 'createdAt,desc',
+  }), [params]);
+  const venuesQuery = useVenues(queryParams);
+  const venues = venuesQuery.data || [];
 
-  const sportIdParam = searchParams.get('sportId') || '';
-  const cityParam = searchParams.get('city') || '';
-  const nameParam = searchParams.get('name') || '';
-
-  const [selectedSport, setSelectedSport] = useState(sportIdParam);
-  const [city, setCity] = useState(cityParam);
-  const [searchName, setSearchName] = useState(nameParam);
-
-  const { data: sportsData } = useSports();
-  const {
-    data: venuesData,
-    isLoading,
-    refetch
-  } = useVenues({
-    sportId: selectedSport || undefined,
-    city: city || undefined,
-    name: searchName || undefined,
-  });
-
-  const sports = sportsData?.data || [];
-  const venues = venuesData?.data?.content || [];
-
-  const handleFilterApply = () => {
-    const p = new URLSearchParams();
-    if (selectedSport) p.set('sportId', selectedSport);
-    if (city) p.set('city', city);
-    if (searchName) p.set('name', searchName);
-    setSearchParams(p);
-    refetch();
+  const apply = (event) => {
+    event?.preventDefault();
+    setParams(buildVenueSearchParams({ sportId, city, name }));
   };
-
-  const handleClearFilters = () => {
-    setSelectedSport('');
+  const clear = () => {
+    setSportId('');
     setCity('');
-    setSearchName('');
-    setSearchParams({});
+    setName('');
+    setParams({});
   };
 
   return (
-    <div className="py-10 bg-slate-50 min-h-screen font-sans">
-      <Container maxWidth="xl">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-navy-900">Search Sports Venues</h1>
-            <p className="text-slate-500 text-sm mt-1">
-              Found {venues.length} venues available for booking
-            </p>
-          </div>
-        </div>
-
-        <Grid container spacing={4}>
-          {/* FILTER SIDEBAR */}
-          <Grid xs={12} md={3}>
-            <Paper elevation={1} className="p-6 !rounded-2xl !bg-white space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-navy-900 flex items-center gap-2">
-                  <FilterList /> Filters
-                </h3>
-                <Button size="small" onClick={handleClearFilters} className="!text-slate-400">
-                  Clear All
-                </Button>
-              </div>
-
-              <TextField
-                fullWidth
-                label="Venue Name"
-                size="small"
-                value={searchName}
-                onChange={(e) => setSearchName(e.target.value)}
-              />
-
-              <FormControl fullWidth size="small">
-                <InputLabel>Sport</InputLabel>
-                <Select
-                  value={selectedSport}
-                  label="Sport"
-                  onChange={(e) => setSelectedSport(e.target.value)}
-                >
-                  <MenuItem value="">All Sports</MenuItem>
-                  {sports.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <TextField
-                fullWidth
-                label="City"
-                size="small"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
-
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleFilterApply}
-                className="!bg-navy-700 !h-11 !font-bold !rounded-xl"
-              >
-                Apply Filters
-              </Button>
-            </Paper>
-          </Grid>
-
-          {/* VENUE RESULTS LIST */}
-          <Grid xs={12} md={9}>
-            {isLoading ? (
-              <Grid container spacing={3}>
-                {[1, 2, 3, 4].map((n) => (
-                  <Grid xs={12} sm={6} key={n}>
-                    <Skeleton variant="rectangle" height={200} className="rounded-2xl mb-2" />
-                    <Skeleton variant="text" height={24} />
-                    <Skeleton variant="text" width="60%" />
-                  </Grid>
-                ))}
-              </Grid>
+    <main className="page-shell py-10 sm:py-14">
+      <div className="section-container">
+        <p className="eyebrow">Explore venues</p>
+        <h1 className="mt-2 text-3xl font-black tracking-tight text-ink sm:text-4xl">Find your next court</h1>
+        <p className="mt-2 text-sm text-muted">
+          {venuesQuery.isLoading ? 'Searching available venues…' : `${venues.length} venue${venues.length === 1 ? '' : 's'} found`}
+        </p>
+        <div className="mt-8 grid gap-7 lg:grid-cols-[280px_1fr]">
+          <form onSubmit={apply} className="surface-card h-fit space-y-4 p-5 lg:sticky lg:top-24">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-extrabold text-ink"><FilterList /> Filters</h2>
+              <Button size="small" onClick={clear}>Clear</Button>
+            </div>
+            <TextField fullWidth label="Venue name" value={name} onChange={(e) => setName(e.target.value)} />
+            <TextField select fullWidth label="Sport" value={sportId} onChange={(e) => setSportId(e.target.value)}>
+              <MenuItem value="">All sports</MenuItem>
+              {sports.map((sport) => <MenuItem key={sport.id} value={sport.id}>{sport.name}</MenuItem>)}
+            </TextField>
+            <TextField fullWidth label="City or area" value={city} onChange={(e) => setCity(e.target.value)} />
+            <Button fullWidth type="submit" variant="contained" startIcon={<Search />}>Apply filters</Button>
+          </form>
+          <section aria-label="Venue results">
+            {venuesQuery.isLoading ? (
+              <div className="grid gap-5 md:grid-cols-2">{[1, 2, 3, 4].map((item) => <Skeleton key={item} variant="rounded" height={340} />)}</div>
+            ) : venuesQuery.isError ? (
+              <EmptyState icon={SportsSoccer} title="Could not load venues" description="The public venue list failed to load. Restart the API after the listing fix, then try again." actionLabel="Retry" onAction={() => venuesQuery.refetch()} />
             ) : venues.length === 0 ? (
-              <Paper className="p-12 text-center !rounded-2xl !bg-white">
-                <SportsSoccer className="!text-6xl !text-slate-300 mb-3" />
-                <h3 className="text-xl font-bold text-navy-900 mb-1">No Venues Found</h3>
-                <p className="text-slate-500 mb-4">Try adjusting your filters or searching for another city.</p>
-                <Button variant="outlined" onClick={handleClearFilters} className="!rounded-xl">
-                  Reset Search
-                </Button>
-              </Paper>
+              <EmptyState icon={SportsSoccer} title="No matching venues" description="Try removing a filter or searching another area." actionLabel="Reset filters" onAction={clear} />
             ) : (
-              <Grid container spacing={3}>
-                {venues.map((venue) => (
-                  <Grid xs={12} sm={6} key={venue.id}>
-                    <Card className="!rounded-2xl !shadow-md hover:!shadow-xl transition-shadow border border-slate-100 flex flex-col h-full">
-                      <div className="relative h-48 bg-slate-200 overflow-hidden">
-                        <img
-                          src={venue.imageUrl || 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=600&auto=format&fit=crop'}
-                          alt={venue.name}
-                          className="w-full h-full object-cover"
-                        />
-                        <Chip
-                          label={venue.city || 'Colombo'}
-                          className="!absolute !top-3 !right-3 !bg-white/90 !text-navy-900 !font-bold !text-xs"
-                        />
-                      </div>
-                      <CardContent className="flex-1 flex flex-col justify-between p-5">
-                        <div>
-                          <h3 className="text-lg font-bold text-navy-900 mb-1">{venue.name}</h3>
-                          <p className="text-slate-500 text-sm flex items-center gap-1 mb-3">
-                            <LocationOn className="!text-base text-slate-400" /> {venue.address || venue.city}
-                          </p>
-                        </div>
-                        <div>
-                          <Divider className="!my-3" />
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="text-xs text-slate-400 block">Starting from</span>
-                              <span className="text-base font-extrabold text-navy-900">
-                                LKR {venue.minPrice || '1,500'} <span className="text-xs font-normal text-slate-500">/ hr</span>
-                              </span>
-                            </div>
-                            <Button
-                              variant="contained"
-                              onClick={() => navigate(`/venues/${venue.id}`)}
-                              className="!bg-navy-900 !text-white !font-bold !rounded-xl !text-xs !py-2"
-                            >
-                              Book Slot
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
+              <div className="grid gap-5 md:grid-cols-2">
+                {venues.map((venue) => <VenueCard key={venue.id} venue={venue} actionLabel="View slots" />)}
+              </div>
             )}
-          </Grid>
-        </Grid>
-      </Container>
-    </div>
+          </section>
+        </div>
+      </div>
+    </main>
   );
 }
