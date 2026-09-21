@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { useCreateBooking } from '../hooks/useBookings';
+import { useCreateBooking, useInitiatePayment } from '../hooks/useBookings';
 import { formatCurrency, formatTime, formatDate } from '../utils/formatters';
 import { clearBookingIntent, readBookingIntent, toApiTime } from '../utils/bookingIntent';
+import { isDummyPayment, PAYMENT_GATEWAY } from '../utils/paymentGateway';
 import {
   TextField,
   Button,
@@ -26,6 +27,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user, customer } = useAuthStore();
   const { mutateAsync: createBooking, isPending: isCreating } = useCreateBooking();
+  const { mutateAsync: startPayment, isPending: isPaying } = useInitiatePayment();
 
   const checkoutState = location.state?.slots ? location.state : readBookingIntent();
 
@@ -55,7 +57,7 @@ export default function CheckoutPage() {
     );
   }
 
-  const { venueId, venueName, date, courtName, slots, totalPrice } = checkoutState;
+  const { venueName, date, courtName, slots, totalPrice } = checkoutState;
 
   const depositRate = 0.3; // 30% deposit option
   const depositAmount = totalPrice * depositRate;
@@ -109,8 +111,12 @@ export default function CheckoutPage() {
         const res = await createBooking(payload);
         bookingData = res?.data || res;
       }
+      const payment = await startPayment({ bookingId: bookingData.id, gateway: PAYMENT_GATEWAY });
       clearBookingIntent();
-
+      if (payment?.paymentUrl) {
+        window.location.href = payment.paymentUrl;
+        return;
+      }
       navigate(`/payment/return?bookingId=${bookingData.id}&reference=${bookingData.bookingRef || bookingData.bookingReference || ''}`, {
         state: { booking: bookingData },
       });
@@ -191,6 +197,11 @@ export default function CheckoutPage() {
                 <CreditCard className="text-lime-600" />
                 Payment Options
               </h2>
+              {isDummyPayment && (
+                <Alert severity="info" className="rounded-2xl">
+                  Development payment is on. No money is taken. PayHere will replace this later.
+                </Alert>
+              )}
 
               <RadioGroup
                 value={paymentType}
@@ -315,7 +326,7 @@ export default function CheckoutPage() {
                 fullWidth
                 variant="contained"
                 onClick={handleConfirmAndPay}
-                disabled={isCreating}
+                disabled={isCreating || isPaying}
                 sx={{
                   backgroundColor: '#84cc16',
                   color: '#061032',
@@ -329,8 +340,10 @@ export default function CheckoutPage() {
                   },
                 }}
               >
-                {isCreating ? (
+                {isCreating || isPaying ? (
                   <CircularProgress size={24} color="inherit" />
+                ) : isDummyPayment ? (
+                  `Confirm booking (dev payment) · ${formatCurrency(payableAmount)}`
                 ) : (
                   `Pay ${formatCurrency(payableAmount)} & Confirm`
                 )}

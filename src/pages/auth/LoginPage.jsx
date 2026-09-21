@@ -10,6 +10,7 @@ import {
  } from '../../hooks/useAuth';
 import BrandLogo from '../../components/ui/BrandLogo';
 import ThemeToggle from '../../components/ui/ThemeToggle';
+import LoginRoleSwitch from '../../components/auth/LoginRoleSwitch';
 
 export default function LoginPage() {
   const location = useLocation();
@@ -31,6 +32,7 @@ export default function LoginPage() {
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5 sm:px-8"><BrandLogo inverse /><ThemeToggle inverse /></div>
       <Container maxWidth="xs">
         <Paper elevation={3} className="p-8 !bg-white !rounded-3xl !shadow-2xl">
+          <LoginRoleSwitch />
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2 mb-4 decoration-none">
               <div className="w-10 h-10 rounded-xl bg-lime-500 flex items-center justify-center text-navy-900 shadow-lime">
@@ -110,12 +112,6 @@ export default function LoginPage() {
             Don't have an account? {''}
             <Link to="/auth/register" state={location.state} className="text-navy-400 font-semibold hover:text-lime-600 decoration-none">
               Register now
-            </Link>
-          </div>
-          <div className="text-center mt-2 text-sm text-slate-500">
-            Venue partner?{' '}
-            <Link to="/owner/login" className="text-navy-400 font-semibold hover:text-lime-600 decoration-none">
-              Owner login
             </Link>
           </div>
         </Paper>

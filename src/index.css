@@ -30,9 +30,9 @@
 
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
-  html { scroll-behavior: smooth; background: var(--canvas); overflow-x: hidden; }
-  body { margin: 0; min-width: 320px; max-width: 100%; overflow-x: hidden; background: var(--canvas); color: var(--ink); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-  #root { width: 100%; min-width: 0; overflow-x: hidden; }
+  html { scroll-behavior: smooth; background: var(--canvas); overflow-x: clip; }
+  body { margin: 0; min-width: 320px; max-width: 100%; overflow-x: clip; background: var(--canvas); color: var(--ink); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  #root { width: 100%; min-width: 0; overflow-x: clip; }
   button, a, input, select, textarea { font: inherit; }
   a { color: inherit; }
   :focus-visible { outline: 3px solid rgba(163, 230, 53, .72); outline-offset: 3px; }
@@ -44,7 +44,18 @@
 
 @layer components {
   .section-container { @apply mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8; box-sizing: border-box; }
-  .page-shell { min-height: calc(100vh - 72px); background: var(--canvas); color: var(--ink); }
+  .page-shell { min-height: calc(100vh - 88px); background: var(--canvas); color: var(--ink); }
+  .site-header { position: -webkit-sticky; position: sticky; top: 0; z-index: 50; width: 100%; flex-shrink: 0; }
+  .nav-search { display: flex; align-items: stretch; width: min(100%, 980px); min-height: 58px; overflow: hidden; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(6, 16, 50, .08); }
+  .nav-search-field { display: flex; min-width: 0; flex: 1; flex-direction: column; justify-content: center; gap: 1px; padding: 8px 16px; }
+  .nav-search-field-compact { flex: 0 1 132px; }
+  .nav-search-label { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+  .nav-search-field input, .nav-search-field select { width: 100%; border: 0; background: transparent; color: var(--ink); font-size: 14px; font-weight: 600; outline: none; }
+  .nav-search-field input::placeholder, .nav-search-field select:invalid { color: var(--muted); font-weight: 500; }
+  .nav-search-field select { appearance: none; cursor: pointer; }
+  .nav-search-split { width: 1px; margin: 12px 0; background: var(--line); }
+  .nav-search-submit { display: flex; height: 44px; width: 44px; flex-shrink: 0; align-items: center; justify-content: center; margin: 7px 8px 7px 4px; border: 0; border-radius: 999px; background: #a3e635; color: #061032; cursor: pointer; }
+  .nav-search-submit:hover { background: #84cc16; }
   .surface-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
   .eyebrow { @apply text-xs font-extrabold uppercase tracking-[0.14em] text-lime-600 dark:text-lime-400; }
   .display-title { @apply text-4xl font-black leading-[1.02] tracking-[-0.04em] text-ink sm:text-5xl lg:text-6xl; }
@@ -71,16 +82,6 @@
   .calendar-time span { @apply mt-0.5 text-[10px] font-semibold text-muted; }
   .calendar-cell { @apply flex min-h-[76px] items-center bg-surface p-2; }
   .calendar-slot { @apply flex h-full min-h-[58px] w-full flex-col items-start justify-center rounded-xl border px-3 py-2 text-left text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 disabled:opacity-100; }
-  .sport-reactive { background: linear-gradient(120deg, var(--sport-soft) 0%, color-mix(in srgb, var(--sport-soft) 74%, white) 52%, var(--sport-accent) 160%); transition: background .45s ease; }
-  .sport-reactive .section-container { max-width: min(80rem, 100vw); }
-  .sport-reactive::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .2; background-size: 48px 48px; transition: opacity .3s ease; }
-  .sport-reactive.pitch::before, .sport-reactive.field::before, .sport-reactive.court::before { background-image: linear-gradient(rgba(6,16,50,.18) 1px, transparent 1px), linear-gradient(90deg, rgba(6,16,50,.18) 1px, transparent 1px); }
-  .sport-reactive.net::before { background-image: linear-gradient(45deg, rgba(6,16,50,.13) 1px, transparent 1px), linear-gradient(-45deg, rgba(6,16,50,.13) 1px, transparent 1px); background-size: 32px 32px; }
-  .sport-reactive.waves::before { background-image: radial-gradient(ellipse at center, transparent 45%, rgba(6,16,50,.16) 47%, transparent 50%); background-size: 64px 28px; }
-  .sport-reactive.arc::before, .sport-reactive.orbit::before { background-image: radial-gradient(circle at center, transparent 50%, rgba(6,16,50,.16) 51%, transparent 53%); background-size: 80px 80px; }
-  .sport-orb { position: absolute; border-radius: 999px; background: var(--sport-accent); filter: blur(2px); opacity: .35; pointer-events: none; animation: sportFloat 7s ease-in-out infinite; }
-  .sport-orb-one { width: 80px; height: 80px; left: 46%; top: 12%; }
-  .sport-orb-two { width: 30px; height: 30px; left: 7%; bottom: 13%; animation-delay: -3s; }
   .sport-choice { @apply relative flex min-h-[76px] min-w-[86px] shrink-0 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl border px-3 py-2 text-xs font-extrabold transition duration-300; color: var(--choice-deep); border-color: color-mix(in srgb, var(--choice-deep) 18%, transparent); background: color-mix(in srgb, white 72%, var(--choice-soft)); }
   .sport-choice::after { content: ''; position: absolute; inset: auto -20% -70% -20%; height: 80%; border-radius: 50%; background: var(--choice-accent); opacity: .18; transition: transform .3s ease, opacity .3s ease; }
   .sport-choice:hover { transform: translateY(-4px) rotate(-1deg); border-color: var(--choice-accent); box-shadow: 0 12px 24px color-mix(in srgb, var(--choice-deep) 12%, transparent); }
@@ -95,8 +96,6 @@
   .sport-bento:hover .sport-bento-pattern { transform: rotate(25deg) scale(1.15); }
   .sport-bento-icon { @apply flex h-10 w-10 items-center justify-center rounded-xl; background: var(--choice-accent); color: var(--choice-deep); transition: transform .3s ease; }
   .sport-bento:hover .sport-bento-icon { transform: rotate(-8deg) scale(1.08); }
-  .activity-marquee { animation: activityMarquee 28s linear infinite; }
-  .activity-marquee:hover { animation-play-state: paused; }
   .venue-results > * { animation: venueCardIn .5s cubic-bezier(.2,.75,.2,1) both; animation-delay: calc(var(--card-index) * 70ms); }
   .venue-discovery-card { transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease; }
   .venue-discovery-card:hover { transform: translateY(-6px); border-color: #a3e635; box-shadow: 0 18px 42px rgba(6,16,50,.14); }
@@ -118,18 +117,18 @@
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
-@keyframes sportFloat {
-  0%, 100% { transform: translate3d(0, 0, 0) rotate(0); }
-  50% { transform: translate3d(14px, -16px, 0) rotate(12deg); }
+@media (max-width: 767px) {
+  .nav-search { display: grid; grid-template-columns: 1fr 1fr 52px; width: 100%; border-radius: 24px; }
+  .nav-search-field { min-height: 58px; padding: 8px 13px; border-bottom: 1px solid var(--line); }
+  .nav-search-field-compact { min-width: 0; }
+  .nav-search-split { display: none; }
+  .nav-search-submit { align-self: center; grid-column: 3; grid-row: 1 / span 3; margin: 7px 7px 7px 1px; }
+  .nav-search-field:nth-of-type(5) { grid-column: 1 / span 2; border-bottom: 0; }
 }
 
 @keyframes sportImageIn {
   from { opacity: 0; transform: scale(1.04) translateX(12px); }
   to { opacity: 1; transform: scale(1) translateX(0); }
-}
-
-@keyframes activityMarquee {
-  to { transform: translateX(-50%); }
 }
 
 @keyframes venueCardIn {

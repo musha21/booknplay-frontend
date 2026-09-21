@@ -58,11 +58,6 @@ export const useCancelBooking = () => {
 export const useInitiatePayment = () => {
   return useMutation({
     mutationFn: ({ bookingId, gateway }) => paymentsApi.initiatePayment(bookingId, gateway),
-    onSuccess: (res) => {
-      if (res.data?.paymentUrl) {
-        window.location.href = res.data.paymentUrl;
-      }
-    },
     onError: (err) => {
       toast.error(err?.response?.data?.message || 'Failed to initiate payment.');
     },

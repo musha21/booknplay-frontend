@@ -69,20 +69,26 @@ export default function LocationPicker({ value, onChange }) {
 
   const applyLatLng = async (lat, lng, addressOverride) => {
     let formatted = addressOverride;
-    let city = '';
     try {
       const rev = await reverseGeocode(lat, lng);
       formatted = formatted || rev.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      city = cityFromNominatim(rev, formatted);
+      const city = cityFromNominatim(rev, formatted);
+      onChange({
+        formattedAddress: formatted,
+        latitude: lat,
+        longitude: lng,
+        city,
+      });
+      setQuery(formatted);
+      return;
     } catch {
       formatted = formatted || query || 'Selected location';
-      city = cityFromNominatim({}, formatted);
     }
     onChange({
       formattedAddress: formatted,
       latitude: lat,
       longitude: lng,
-      city,
+      city: cityFromNominatim({}, formatted),
     });
     setQuery(formatted);
   };

@@ -9,6 +9,7 @@ import queryClient from './lib/queryClient';
 import { createAppTheme } from './theme/muiTheme';
 import { useThemeMode } from './theme/ThemeModeContext';
 import RouteLoader from './components/ui/RouteLoader';
+import { AdminAuditPage, AdminBusinessesPage, AdminCustomersPage, AdminVenuesPage } from './pages/admin/AdminResourcePages';
 
 const Layout = lazy(() => import('./components/layout/Layout'));
 const ProtectedRoute = lazy(() => import('./components/layout/ProtectedRoute'));
@@ -38,6 +39,11 @@ const OwnerCourtsPage = lazy(() => import('./pages/owner/OwnerCourtsPage'));
 const OwnerCalendarPage = lazy(() => import('./pages/owner/OwnerCalendarPage'));
 const OwnerEarningsPage = lazy(() => import('./pages/owner/OwnerEarningsPage'));
 const OwnerProfilePage = lazy(() => import('./pages/owner/OwnerProfilePage'));
+const AdminProtectedRoute = lazy(() => import('./components/layout/AdminProtectedRoute'));
+const AdminLayout = lazy(() => import('./components/layout/AdminLayout'));
+const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage'));
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const AdminHomepagePage = lazy(() => import('./pages/admin/AdminHomepagePage'));
 
 const router = createBrowserRouter([
   {
@@ -71,6 +77,19 @@ const router = createBrowserRouter([
   { path: 'auth/register', element: <RegisterPage /> },
   { path: 'owner/login', element: <OwnerLoginPage /> },
   { path: 'owner/register', element: <OwnerRegisterPage /> },
+  { path: 'admin/login', element: <AdminLoginPage /> },
+  {
+    path: 'admin', element: <AdminProtectedRoute />, children: [{
+      element: <AdminLayout />, children: [
+        { index: true, element: <AdminDashboardPage /> },
+        { path: 'homepage', element: <AdminHomepagePage /> },
+        { path: 'businesses', element: <AdminBusinessesPage /> },
+        { path: 'venues', element: <AdminVenuesPage /> },
+        { path: 'customers', element: <AdminCustomersPage /> },
+        { path: 'audit', element: <AdminAuditPage /> },
+      ],
+    }],
+  },
   {
     path: 'owner', element: <OwnerProtectedRoute />, children: [{
       element: <OwnerLayout />, children: [

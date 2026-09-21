@@ -86,13 +86,11 @@ apiClient.interceptors.response.use(
         isRefreshing = false;
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        window.location.href = role === 'BUSINESS_OWNER' || role === 'STAFF' ? '/owner/login' : '/auth/login';
+        window.location.href = role === 'SUPER_ADMIN' ? '/admin/login' : role === 'BUSINESS_OWNER' || role === 'STAFF' ? '/owner/login' : '/auth/login';
         return Promise.reject(error);
       }
 
-      const refreshPath = role === 'BUSINESS_OWNER' || role === 'STAFF'
-        ? '/owner/auth/refresh'
-        : '/customer/auth/refresh';
+      const refreshPath = role === 'SUPER_ADMIN' ? '/admin/auth/refresh' : role === 'BUSINESS_OWNER' || role === 'STAFF' ? '/owner/auth/refresh' : '/customer/auth/refresh';
 
       try {
         const { data } = await axios.post(`${BASE_URL}${refreshPath}`, { refreshToken });
@@ -126,7 +124,7 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        window.location.href = role === 'BUSINESS_OWNER' || role === 'STAFF' ? '/owner/login' : '/auth/login';
+        window.location.href = role === 'SUPER_ADMIN' ? '/admin/login' : role === 'BUSINESS_OWNER' || role === 'STAFF' ? '/owner/login' : '/auth/login';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
