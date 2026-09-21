@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, Button, Container, Paper, TextField, Typography } from '@mui/material';
 import { useOwnerLogin } from '../../hooks/useOwner';
+import BrandLogo from '../../components/ui/BrandLogo';
+import ThemeToggle from '../../components/ui/ThemeToggle';
 
 export default function OwnerLoginPage() {
   const [email, setEmail] = useState('');
@@ -14,7 +16,8 @@ export default function OwnerLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-navy-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-navy-900 flex items-center justify-center p-4 pt-24 relative">
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5 sm:px-8"><BrandLogo inverse /><ThemeToggle inverse /></div>
       <Container maxWidth="xs">
         <Paper className="p-8 !rounded-3xl">
           <Typography variant="h5" className="!font-bold !mb-1">Venue owner login</Typography>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { Box, Button, Stack, TextField, Typography } from '@mui/material';
@@ -12,6 +12,20 @@ L.Icon.Default.mergeOptions({
 });
 
 const COLOMBO = { lat: 6.9271, lng: 79.8612 };
+
+const cityFromNominatim = (rev, formatted = '') => {
+  const address = rev?.address || {};
+  return (
+    address.city ||
+    address.town ||
+    address.village ||
+    address.municipality ||
+    address.county ||
+    formatted.split(',').slice(-3, -2)[0]?.trim() ||
+    formatted.split(',').slice(-2, -1)[0]?.trim() ||
+    ''
+  );
+};
 
 function Recenter({ lat, lng }) {
   const map = useMap();
@@ -55,19 +69,20 @@ export default function LocationPicker({ value, onChange }) {
 
   const applyLatLng = async (lat, lng, addressOverride) => {
     let formatted = addressOverride;
-    if (!formatted) {
-      try {
-        const rev = await reverseGeocode(lat, lng);
-        formatted = rev.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-      } catch {
-        formatted = query || 'Selected location';
-      }
+    let city = '';
+    try {
+      const rev = await reverseGeocode(lat, lng);
+      formatted = formatted || rev.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      city = cityFromNominatim(rev, formatted);
+    } catch {
+      formatted = formatted || query || 'Selected location';
+      city = cityFromNominatim({}, formatted);
     }
     onChange({
       formattedAddress: formatted,
       latitude: lat,
       longitude: lng,
-      city: formatted.split(',').slice(-2, -1)[0]?.trim() || '',
+      city,
     });
     setQuery(formatted);
   };

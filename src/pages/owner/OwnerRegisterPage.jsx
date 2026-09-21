@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Alert, Box, Button, Container, Paper, Stack, TextField, Typography } from '@mui/material';
 import { AddPhotoAlternate } from '@mui/icons-material';
 import { toast } from 'sonner';
 import { useOwnerRegister } from '../../hooks/useOwner';
 import { uploadBusinessImages } from '../../api/ownerBusiness';
+import BrandLogo from '../../components/ui/BrandLogo';
+import ThemeToggle from '../../components/ui/ThemeToggle';
 
 function ImageTile({ label, preview, onPick }) {
   return (
@@ -71,7 +73,8 @@ export default function OwnerRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-navy-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-navy-900 flex items-center justify-center p-4 pt-24 relative">
+      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5 sm:px-8"><BrandLogo inverse /><ThemeToggle inverse /></div>
       <Container maxWidth="sm">
         <Paper className="p-8 !rounded-3xl">
           <Typography variant="h5" fontWeight={800}>Business Registration</Typography>

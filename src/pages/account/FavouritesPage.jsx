@@ -1,11 +1,6 @@
-import React from 'react';
-import { Paper, Typography } from '@mui/material';
+import { FavoriteBorder } from '@mui/icons-material';
+import EmptyState from '../../components/ui/EmptyState';
 
 export default function FavouritesPage() {
-  return (
-    <Paper elevation={1} className="p-6 !rounded-2xl !bg-white">
-      <h2 className="text-2xl font-bold text-navy-900 mb-4">Favourite Venues</h2>
-      <p className="text-slate-500">No favourite venues saved yet. Browse venues and click the heart icon to add them here.</p>
-    </Paper>
-  );
+  return <div className="surface-card p-5 sm:p-7"><p className="eyebrow">Saved places</p><h2 className="mt-2 text-2xl font-black text-ink">Favourite venues</h2><div className="mt-6"><EmptyState icon={FavoriteBorder} title="No saved venues yet" description="Favourites will appear here when venue saving is supported by your account." /></div></div>;
 }

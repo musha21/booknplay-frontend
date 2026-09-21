@@ -1,7 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useVenue, useVenueAvailability } from '../hooks/useVenues';
 import { formatCurrency, formatTime, formatDate } from '../utils/formatters';
+import { saveBookingIntent } from '../utils/bookingIntent';
+import useAuthStore from '../stores/authStore';
 import dayjs from 'dayjs';
 import {
   CalendarMonth,
@@ -26,18 +28,14 @@ export default function ChooseSlotPage() {
   const [selectedSlots, setSelectedSlots] = useState([]);
 
   const { data: venue, isLoading: venueLoading } = useVenue(venueId);
+  const isCustomer = useAuthStore((state) => state.isAuthenticated && state.role === 'CUSTOMER');
+  const effectiveCourtId = selectedCourtId || String(venue?.courts?.[0]?.id || '');
+  const selectedCourt = venue?.courts?.find((court) => String(court.id) === String(effectiveCourtId)) || venue?.courts?.[0];
   const {
     data: availability = [],
     isLoading: slotsLoading,
     error: slotsError,
-  } = useVenueAvailability(venueId, selectedDate, selectedCourtId);
-
-  // Auto-select first court if not set
-  useEffect(() => {
-    if (venue?.courts?.length > 0 && !selectedCourtId) {
-      setSelectedCourtId(String(venue.courts[0].id));
-    }
-  }, [venue, selectedCourtId]);
+  } = useVenueAvailability(venueId, selectedDate, effectiveCourtId);
 
   // Generate next 7 days for the date strip
   const dateStrip = useMemo(() => {
@@ -76,17 +74,29 @@ export default function ChooseSlotPage() {
 
   const handleProceedToCheckout = () => {
     if (selectedSlots.length === 0) return;
-    navigate('/checkout', {
-      state: {
-        venueId,
-        venueName: venue?.name,
-        date: selectedDate,
-        courtId: selectedCourtId,
-        courtName: venue?.courts?.find((c) => String(c.id) === String(selectedCourtId))?.name,
-        slots: selectedSlots,
-        totalPrice,
-      },
-    });
+    const intent = {
+      venueId,
+      venueName: venue?.name,
+      date: selectedDate,
+      courtId: effectiveCourtId,
+      courtName: selectedCourt?.name,
+      sportId: selectedCourt?.sportId,
+      sportName: selectedCourt?.sportName,
+      slots: selectedSlots.map((slot) => ({
+        ...slot,
+        courtId: slot.courtId || effectiveCourtId,
+        sportId: slot.sportId || selectedCourt?.sportId,
+      })),
+      totalPrice,
+    };
+    saveBookingIntent(intent);
+    if (!isCustomer) {
+      navigate('/auth/login', {
+        state: { from: { pathname: '/checkout', state: intent }, reason: 'booking' },
+      });
+      return;
+    }
+    navigate('/checkout', { state: intent });
   };
 
   if (venueLoading) {
@@ -118,7 +128,7 @@ export default function ChooseSlotPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-lime-100 text-lime-800">
-              {venue?.sportType || 'Multi-Sport'}
+              {venue?.sportName || venue?.venueType || 'Multi-Sport'}
             </span>
             <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-700">
               {venue?.courts?.length || 0} Courts Available
@@ -134,7 +144,7 @@ export default function ChooseSlotPage() {
           </h2>
           <div className="flex flex-wrap gap-3">
             {venue?.courts?.map((court) => {
-              const isSelected = String(court.id) === String(selectedCourtId);
+              const isSelected = String(court.id) === String(effectiveCourtId);
               return (
                 <button
                   key={court.id}
@@ -302,7 +312,7 @@ export default function ChooseSlotPage() {
                 },
               }}
             >
-              Proceed to Checkout
+              {isCustomer ? 'Continue to checkout' : 'Sign in to book'}
             </Button>
           </div>
         </div>

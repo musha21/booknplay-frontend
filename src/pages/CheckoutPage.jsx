@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useCreateBooking } from '../hooks/useBookings';
 import { formatCurrency, formatTime, formatDate } from '../utils/formatters';
+import { clearBookingIntent, readBookingIntent, toApiTime } from '../utils/bookingIntent';
 import {
   TextField,
   Button,
@@ -23,15 +24,15 @@ import {
 export default function CheckoutPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, customer } = useAuthStore();
   const { mutateAsync: createBooking, isPending: isCreating } = useCreateBooking();
 
-  const checkoutState = location.state;
+  const checkoutState = location.state?.slots ? location.state : readBookingIntent();
 
   const [contactInfo, setContactInfo] = useState({
-    fullName: user?.name || '',
-    email: user?.email || '',
-    phoneNumber: user?.phone || '',
+    fullName: user?.name || `${customer?.firstName || ''} ${customer?.lastName || ''}`.trim(),
+    email: user?.email || customer?.email || '',
+    phoneNumber: user?.phone || customer?.phone || '',
     specialRequests: '',
   });
 
@@ -75,23 +76,42 @@ export default function CheckoutPage() {
     }
 
     try {
-      const bookingPayload = {
-        venueId: Number(venueId),
-        bookingDate: date,
-        paymentOption: paymentType,
-        customerNotes: contactInfo.specialRequests || '',
-        slots: slots.map((s) => ({
-          courtId: s.courtId,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          price: s.price,
-        })),
-      };
+      const sorted = [...slots].sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)));
+      const courtId = String(checkoutState.courtId || sorted[0].courtId);
+      const sportId = String(checkoutState.sportId || sorted[0].sportId || '');
+      if (!sportId) {
+        setError('This court is missing a sport. Go back and choose the slot again.');
+        return;
+      }
 
-      const res = await createBooking(bookingPayload);
-      const bookingData = res.data;
+      const sameCourt = sorted.every((slot) => String(slot.courtId || courtId) === courtId);
+      const consecutive = sameCourt && sorted.every((slot, index) => (
+        index === 0 || toApiTime(sorted[index - 1].endTime) === toApiTime(slot.startTime)
+      ));
+      const requests = consecutive
+        ? [{
+            courtId,
+            sportId,
+            date,
+            startTime: toApiTime(sorted[0].startTime),
+            endTime: toApiTime(sorted[sorted.length - 1].endTime),
+          }]
+        : sorted.map((slot) => ({
+            courtId: String(slot.courtId || courtId),
+            sportId: String(slot.sportId || sportId),
+            date,
+            startTime: toApiTime(slot.startTime),
+            endTime: toApiTime(slot.endTime),
+          }));
 
-      navigate(`/payment/return?bookingId=${bookingData.id}&reference=${bookingData.bookingReference || ''}`, {
+      let bookingData = null;
+      for (const payload of requests) {
+        const res = await createBooking(payload);
+        bookingData = res?.data || res;
+      }
+      clearBookingIntent();
+
+      navigate(`/payment/return?bookingId=${bookingData.id}&reference=${bookingData.bookingRef || bookingData.bookingReference || ''}`, {
         state: { booking: bookingData },
       });
     } catch (err) {

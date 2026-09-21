@@ -1,163 +1,143 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ===== Global Reset & Base ===== */
+:root {
+  --canvas: #f7f9fc;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --brand: #061032;
+  --brand-action: #152c6e;
+  --accent: #a3e635;
+  --accent-strong: #84cc16;
+  --shadow: 0 14px 36px rgba(6, 16, 50, .07);
+}
+
+[data-theme='dark'] {
+  --canvas: #050b16;
+  --surface: #0d1726;
+  --surface-raised: #132238;
+  --ink: #f8fafc;
+  --muted: #94a3b8;
+  --line: #25324a;
+  --shadow: 0 18px 42px rgba(0, 0, 0, .26);
+}
+
 @layer base {
-  *, *::before, *::after {
-    box-sizing: border-box;
-  }
-
-  html {
-    scroll-behavior: smooth;
-  }
-
-  body {
-    @apply font-sans text-slate-800 bg-white antialiased;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-slate-100;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-navy-300 rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-navy-500;
-  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; background: var(--canvas); overflow-x: hidden; }
+  body { margin: 0; min-width: 320px; max-width: 100%; overflow-x: hidden; background: var(--canvas); color: var(--ink); font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  #root { width: 100%; min-width: 0; overflow-x: hidden; }
+  button, a, input, select, textarea { font: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid rgba(163, 230, 53, .72); outline-offset: 3px; }
+  ::selection { color: #061032; background: #bef264; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--canvas); }
+  ::-webkit-scrollbar-thumb { background: #7f95ce; border-radius: 999px; }
 }
 
-/* ===== Reusable Component Classes ===== */
 @layer components {
-
-  /* Buttons */
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm
-           bg-navy-700 text-white transition-all duration-200
-           hover:bg-navy-800 hover:shadow-card-hover hover:-translate-y-0.5
-           active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-navy-500 focus:ring-offset-2;
-  }
-
-  .btn-lime {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm
-           bg-lime-500 text-white transition-all duration-200
-           hover:bg-lime-600 hover:shadow-lime hover:-translate-y-0.5
-           active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:ring-offset-2;
-  }
-
-  .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm
-           border-2 border-navy-700 text-navy-700 bg-transparent transition-all duration-200
-           hover:bg-navy-700 hover:text-white hover:-translate-y-0.5
-           focus:outline-none focus:ring-2 focus:ring-navy-500 focus:ring-offset-2;
-  }
-
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-           text-navy-700 bg-transparent transition-all duration-150
-           hover:bg-navy-50;
-  }
-
-  /* Cards */
-  .card {
-    @apply bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden
-           transition-all duration-300;
-  }
-
-  .card-hover {
-    @apply card hover:shadow-card-hover hover:-translate-y-1 cursor-pointer;
-  }
-
-  /* Section container */
-  .section-container {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
-  }
-
-  /* Badge / Chip */
-  .chip {
-    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold;
-  }
-
-  .chip-navy {
-    @apply chip bg-navy-100 text-navy-700;
-  }
-
-  .chip-lime {
-    @apply chip bg-lime-100 text-lime-700;
-  }
-
-  .chip-success {
-    @apply chip bg-emerald-100 text-emerald-700;
-  }
-
-  .chip-warning {
-    @apply chip bg-amber-100 text-amber-700;
-  }
-
-  .chip-error {
-    @apply chip bg-red-100 text-red-700;
-  }
-
-  /* Section heading */
-  .section-title {
-    @apply text-2xl sm:text-3xl font-bold text-navy-900;
-  }
-
-  .section-subtitle {
-    @apply text-slate-500 text-base mt-2;
-  }
-
-  /* Glass card */
-  .glass {
-    @apply bg-white/10 backdrop-blur-md border border-white/20;
-  }
-
-  /* Input field */
-  .input-field {
-    @apply w-full px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-800
-           focus:outline-none focus:ring-2 focus:ring-navy-500 focus:border-transparent
-           placeholder:text-slate-400 transition-all duration-200
-           hover:border-navy-300;
-  }
-
-  /* Slot button */
-  .slot-btn {
-    @apply px-3 py-2 rounded-lg text-xs font-semibold border-2 transition-all duration-150 cursor-pointer;
-  }
-
-  .slot-available {
-    @apply slot-btn border-lime-400 text-lime-700 bg-lime-50
-           hover:bg-lime-500 hover:text-white hover:border-lime-500;
-  }
-
-  .slot-unavailable {
-    @apply slot-btn border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed line-through;
-  }
-
-  .slot-selected {
-    @apply slot-btn border-navy-700 text-white bg-navy-700;
-  }
+  .section-container { @apply mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8; box-sizing: border-box; }
+  .page-shell { min-height: calc(100vh - 72px); background: var(--canvas); color: var(--ink); }
+  .surface-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+  .eyebrow { @apply text-xs font-extrabold uppercase tracking-[0.14em] text-lime-600 dark:text-lime-400; }
+  .display-title { @apply text-4xl font-black leading-[1.02] tracking-[-0.04em] text-ink sm:text-5xl lg:text-6xl; }
+  .section-title { @apply text-2xl font-black tracking-[-0.025em] text-ink sm:text-3xl; }
+  .section-subtitle { @apply mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-base; }
+  .btn-primary { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-navy-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-navy-800; }
+  .btn-lime { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-lime-400 px-5 py-2.5 text-sm font-extrabold text-navy-900 transition hover:bg-lime-500; }
+  .btn-outline { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-5 py-2.5 text-sm font-bold text-ink transition hover:border-lime-500; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold; }
+  .chip-lime { @apply chip bg-lime-100 text-lime-800; }
+  .chip-navy { @apply chip bg-navy-50 text-navy-800; }
+  .field-label { @apply mb-1.5 block text-xs font-bold text-ink; }
+  .brand-grid { background-image: linear-gradient(rgba(163,230,53,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(163,230,53,.08) 1px,transparent 1px); background-size: 32px 32px; }
+  .image-placeholder { background: radial-gradient(circle at 75% 25%, rgba(163,230,53,.28), transparent 22%), linear-gradient(135deg,#061032,#152c6e); }
+  .calendar-filter { @apply min-h-9 shrink-0 rounded-full border border-line bg-surface px-4 text-xs font-extrabold text-muted transition hover:border-navy-300 hover:text-ink; }
+  .calendar-filter-active { @apply border-navy-900 bg-navy-900 text-white hover:border-navy-800 hover:text-white dark:border-lime-400 dark:bg-lime-400 dark:text-navy-900; }
+  .calendar-board { display: grid; background: var(--line); gap: 1px; }
+  .calendar-corner { @apply sticky left-0 top-0 z-30 flex min-h-16 items-center bg-canvas px-4 text-[11px] font-extrabold uppercase tracking-wider text-muted; }
+  .calendar-court-heading { @apply sticky top-0 z-20 flex min-h-16 flex-col justify-center bg-surface px-4; }
+  .calendar-court-heading strong { @apply truncate text-sm font-extrabold text-ink; }
+  .calendar-court-heading span { @apply mt-0.5 truncate text-[11px] text-muted; }
+  .calendar-time { @apply sticky left-0 z-10 flex min-h-[76px] flex-col justify-center bg-canvas px-4; }
+  .calendar-time strong { @apply text-sm font-black text-ink; }
+  .calendar-time span { @apply mt-0.5 text-[10px] font-semibold text-muted; }
+  .calendar-cell { @apply flex min-h-[76px] items-center bg-surface p-2; }
+  .calendar-slot { @apply flex h-full min-h-[58px] w-full flex-col items-start justify-center rounded-xl border px-3 py-2 text-left text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 disabled:opacity-100; }
+  .sport-reactive { background: linear-gradient(120deg, var(--sport-soft) 0%, color-mix(in srgb, var(--sport-soft) 74%, white) 52%, var(--sport-accent) 160%); transition: background .45s ease; }
+  .sport-reactive .section-container { max-width: min(80rem, 100vw); }
+  .sport-reactive::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .2; background-size: 48px 48px; transition: opacity .3s ease; }
+  .sport-reactive.pitch::before, .sport-reactive.field::before, .sport-reactive.court::before { background-image: linear-gradient(rgba(6,16,50,.18) 1px, transparent 1px), linear-gradient(90deg, rgba(6,16,50,.18) 1px, transparent 1px); }
+  .sport-reactive.net::before { background-image: linear-gradient(45deg, rgba(6,16,50,.13) 1px, transparent 1px), linear-gradient(-45deg, rgba(6,16,50,.13) 1px, transparent 1px); background-size: 32px 32px; }
+  .sport-reactive.waves::before { background-image: radial-gradient(ellipse at center, transparent 45%, rgba(6,16,50,.16) 47%, transparent 50%); background-size: 64px 28px; }
+  .sport-reactive.arc::before, .sport-reactive.orbit::before { background-image: radial-gradient(circle at center, transparent 50%, rgba(6,16,50,.16) 51%, transparent 53%); background-size: 80px 80px; }
+  .sport-orb { position: absolute; border-radius: 999px; background: var(--sport-accent); filter: blur(2px); opacity: .35; pointer-events: none; animation: sportFloat 7s ease-in-out infinite; }
+  .sport-orb-one { width: 80px; height: 80px; left: 46%; top: 12%; }
+  .sport-orb-two { width: 30px; height: 30px; left: 7%; bottom: 13%; animation-delay: -3s; }
+  .sport-choice { @apply relative flex min-h-[76px] min-w-[86px] shrink-0 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl border px-3 py-2 text-xs font-extrabold transition duration-300; color: var(--choice-deep); border-color: color-mix(in srgb, var(--choice-deep) 18%, transparent); background: color-mix(in srgb, white 72%, var(--choice-soft)); }
+  .sport-choice::after { content: ''; position: absolute; inset: auto -20% -70% -20%; height: 80%; border-radius: 50%; background: var(--choice-accent); opacity: .18; transition: transform .3s ease, opacity .3s ease; }
+  .sport-choice:hover { transform: translateY(-4px) rotate(-1deg); border-color: var(--choice-accent); box-shadow: 0 12px 24px color-mix(in srgb, var(--choice-deep) 12%, transparent); }
+  .sport-choice:hover::after { transform: translateY(-16px) scale(1.15); opacity: .3; }
+  .sport-choice-selected { color: white; border-color: var(--choice-deep); background: var(--choice-deep); box-shadow: 0 0 0 3px color-mix(in srgb, var(--choice-accent) 55%, transparent); transform: translateY(-3px); }
+  .sport-choice-icon { @apply relative z-10 flex h-8 w-8 items-center justify-center rounded-full; background: var(--choice-accent); color: var(--choice-deep); transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+  .sport-choice:hover .sport-choice-icon, .sport-choice-selected .sport-choice-icon { transform: translateY(-2px) rotate(8deg) scale(1.08); }
+  .sport-image-enter { animation: sportImageIn .48s cubic-bezier(.2,.75,.2,1) both; }
+  .sport-bento { @apply relative isolate overflow-hidden rounded-[24px] border p-4 transition duration-300 sm:p-5; color: var(--choice-deep); border-color: color-mix(in srgb, var(--choice-deep) 14%, transparent); background: linear-gradient(135deg, var(--choice-soft), color-mix(in srgb, var(--choice-accent) 42%, white)); }
+  .sport-bento:hover { transform: translateY(-5px); border-color: var(--choice-accent); box-shadow: 0 18px 36px color-mix(in srgb, var(--choice-deep) 15%, transparent); }
+  .sport-bento-pattern { position: absolute; width: 180px; height: 180px; right: -70px; top: -75px; border: 28px solid var(--choice-accent); border-radius: 999px; opacity: .22; transition: transform .45s ease; }
+  .sport-bento:hover .sport-bento-pattern { transform: rotate(25deg) scale(1.15); }
+  .sport-bento-icon { @apply flex h-10 w-10 items-center justify-center rounded-xl; background: var(--choice-accent); color: var(--choice-deep); transition: transform .3s ease; }
+  .sport-bento:hover .sport-bento-icon { transform: rotate(-8deg) scale(1.08); }
+  .activity-marquee { animation: activityMarquee 28s linear infinite; }
+  .activity-marquee:hover { animation-play-state: paused; }
+  .venue-results > * { animation: venueCardIn .5s cubic-bezier(.2,.75,.2,1) both; animation-delay: calc(var(--card-index) * 70ms); }
+  .venue-discovery-card { transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease; }
+  .venue-discovery-card:hover { transform: translateY(-6px); border-color: #a3e635; box-shadow: 0 18px 42px rgba(6,16,50,.14); }
+  .city-card { transition: transform .3s ease, box-shadow .3s ease; }
+  .city-card:hover { transform: translateY(-5px) rotate(-.3deg); box-shadow: 0 20px 44px rgba(6,16,50,.18); }
+  .booking-step { transition: transform .2s ease, background-color .2s ease, border-color .2s ease; }
+  .booking-step:hover { transform: translateX(5px); }
+  .step-preview-enter { animation: stepPreviewIn .4s cubic-bezier(.2,.75,.2,1) both; }
 }
 
-/* ===== Utility overrides ===== */
-@layer utilities {
-  .text-balance { text-wrap: balance; }
+[data-theme='dark'] .bg-white { background-color: var(--surface) !important; }
+[data-theme='dark'] .bg-slate-50, [data-theme='dark'] .bg-slate-100 { background-color: var(--canvas) !important; }
+[data-theme='dark'] .text-navy-900, [data-theme='dark'] .text-slate-900, [data-theme='dark'] .text-slate-800, [data-theme='dark'] .text-slate-700 { color: var(--ink) !important; }
+[data-theme='dark'] .text-slate-600, [data-theme='dark'] .text-slate-500, [data-theme='dark'] .text-slate-400 { color: var(--muted) !important; }
+[data-theme='dark'] .border-slate-100, [data-theme='dark'] .border-slate-200, [data-theme='dark'] .border-slate-300 { border-color: var(--line) !important; }
+[data-theme='dark'] .leaflet-layer { filter: brightness(.72) saturate(.7) contrast(1.2); }
 
-  /* Hide scrollbar but keep scrollability */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+@keyframes sportFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0); }
+  50% { transform: translate3d(14px, -16px, 0) rotate(12deg); }
+}
+
+@keyframes sportImageIn {
+  from { opacity: 0; transform: scale(1.04) translateX(12px); }
+  to { opacity: 1; transform: scale(1) translateX(0); }
+}
+
+@keyframes activityMarquee {
+  to { transform: translateX(-50%); }
+}
+
+@keyframes venueCardIn {
+  from { opacity: 0; transform: translateY(18px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes stepPreviewIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }

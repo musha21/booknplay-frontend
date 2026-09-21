@@ -1,4 +1,3 @@
-import React from 'react';
 import { Paper, Accordion, AccordionSummary, AccordionDetails, Typography } from '@mui/material';
 import {
  ExpandMore

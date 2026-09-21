@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container, Paper, Chip, Button, Skeleton, Divider,
@@ -38,7 +38,7 @@ export default function BookingDetailPage() {
     return (
       <Container maxWidth="md" className="py-20 text-center">
         <h2 className="text-2xl font-bold text-navy-900 mb-4">Booking not found</h2>
-        <Button variant="outlined" startIcon=<ArrowBack /> onClick={() => navigate('/account/bookings')}>
+        <Button variant="outlined" startIcon={<ArrowBack />} onClick={() => navigate('/account/bookings')}>
           Back to Bookings
         </Button>
       </Container>
@@ -110,7 +110,7 @@ export default function BookingDetailPage() {
             <Button
               fullWidth
               variant="outlined"
-              startIcon=<Download />
+              startIcon={<Download />}
               onClick={handleDownloadReceipt}
               className="!border-navy-700 !text-navy-700 !font-bold !py-3 !rounded-xl"
             >
@@ -121,7 +121,7 @@ export default function BookingDetailPage() {
                 fullWidth
                 variant="outlined"
                 color="error"
-                startIcon=<Cancel />
+                startIcon={<Cancel />}
                 onClick={() => setOpenCancelDialog(true)}
                 className="!font-bold !py-3 !rounded-xl"
               >

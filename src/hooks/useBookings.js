@@ -31,7 +31,7 @@ export const useBookingDetail = (id) =>
 export const useCreateBooking = () => {
   return useMutation({
     mutationFn: bookingsApi.createBooking,
-    onSuccess: (res) => {
+    onSuccess: () => {
       toast.success('Slot reserved successfully!');
     },
     onError: (err) => {

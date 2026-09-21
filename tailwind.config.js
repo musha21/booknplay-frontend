@@ -1,5 +1,6 @@
 ﻿/** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: ['class', '[data-theme="dark"]'],
   content: [
     "./index.html",
     "./src/**/*.{js,jsx}",
@@ -8,6 +9,11 @@ export default {
   theme: {
     extend: {
       colors: {
+        canvas: 'var(--canvas)',
+        surface: 'var(--surface)',
+        ink: 'var(--ink)',
+        muted: 'var(--muted)',
+        line: 'var(--line)',
         navy: {
           50:  '#eef1f8',
           100: '#d5dcef',

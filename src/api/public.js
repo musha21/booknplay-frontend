@@ -1,46 +1,16 @@
 ﻿import apiClient from '../lib/axios';
+import { cleanQueryParams, unwrapApiData } from '../utils/apiData';
 
-/* ───────────────────────────────────────────────
-   Public endpoints  →  /api/v1/public/*
-   No auth required
-─────────────────────────────────────────────── */
+const get = (url, config) => apiClient.get(url, config).then((r) => unwrapApiData(r.data));
 
-/**
- * Search / list venues
- * GET /public/venues
- * @param {{ city?: string, sportId?: string, name?: string, page?: number, size?: number }} params
- */
 export const getVenues = (params = {}) =>
-  apiClient.get('/public/venues', { params }).then((r) => r.data);
+  get('/public/venues', { params: cleanQueryParams(params) });
 
-/**
- * Get a single venue with its courts
- * GET /public/venues/:id
- * @param {string} id
- */
-export const getVenueById = (id) =>
-  apiClient.get(`/public/venues/${id}`).then((r) => r.data);
+export const getVenueById = (id) => get(`/public/venues/${id}`);
 
-/**
- * List all active sports
- * GET /public/sports
- */
-export const getAllSports = () =>
-  apiClient.get('/public/sports').then((r) => r.data);
+export const getAllSports = () => get('/public/sports');
 
-/**
- * Get courts for a venue
- * GET /public/venues/:venueId/courts
- * @param {string} venueId
- */
-export const getCourtsByVenue = (venueId) =>
-  apiClient.get(`/public/venues/${venueId}/courts`).then((r) => r.data);
+export const getCourtsByVenue = (venueId) => get(`/public/venues/${venueId}/courts`);
 
-/**
- * Get slot availability for a court on a date
- * GET /public/availability?courtId=&date=
- * @param {string} courtId
- * @param {string} date  - "YYYY-MM-DD"
- */
 export const getAvailability = (courtId, date) =>
-  apiClient.get('/public/availability', { params: { courtId, date } }).then((r) => r.data);
+  get('/public/availability', { params: { courtId, date } });

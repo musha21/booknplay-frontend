@@ -1,11 +1,8 @@
-import React from 'react';
 import { Paper, Chip, Skeleton } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import { useBookingHistory } from '../../hooks/useBookings';
 import { formatTime } from '../../utils/formatters';
 
 export default function BookingHistoryPage() {
-  const navigate = useNavigate();
   const { data, isLoading } = useBookingHistory();
 
   const bookings = data?.data?.content || [];

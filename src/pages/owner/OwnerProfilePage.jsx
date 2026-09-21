@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Avatar, Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
 import { toast } from 'sonner';
 import ownerAuthApi from '../../api/ownerAuth';
@@ -36,6 +36,8 @@ export default function OwnerProfilePage() {
   };
 
   useEffect(() => {
+    // The profile is loaded once when the protected owner screen mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
@@ -68,7 +70,7 @@ export default function OwnerProfilePage() {
   if (!profile) return <Typography>Could not load profile.</Typography>;
 
   return (
-    <Stack spacing={3} maxWidth={720}>
+    <Stack spacing={3} maxWidth={760} className="mx-auto">
       <Typography variant="h4">Owner profile</Typography>
       <Paper className="p-4">
         <Stack direction="row" spacing={2} alignItems="center">

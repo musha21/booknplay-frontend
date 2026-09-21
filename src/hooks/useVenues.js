@@ -1,17 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { getVenues, getVenueById, getAllSports, getCourtsByVenue, getAvailability } from '../api/public';
+import { unwrapApiData, unwrapList } from '../utils/apiData';
 
 export const useSports = () =>
   useQuery({
     queryKey: ['sports'],
     queryFn: getAllSports,
     staleTime: 1000 * 60 * 10,
+    select: unwrapList,
   });
 
 export const useVenues = (params) =>
   useQuery({
     queryKey: ['venues', params],
     queryFn: () => getVenues(params),
+    select: unwrapList,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
 export const useVenue = (id) =>
@@ -19,6 +24,7 @@ export const useVenue = (id) =>
     queryKey: ['venue', id],
     queryFn: () => getVenueById(id),
     enabled: Boolean(id),
+    select: unwrapApiData,
   });
 
 export const useCourts = (venueId) =>
@@ -26,6 +32,7 @@ export const useCourts = (venueId) =>
     queryKey: ['courts', venueId],
     queryFn: () => getCourtsByVenue(venueId),
     enabled: Boolean(venueId),
+    select: unwrapList,
   });
 
 export const useAvailability = (venueOrCourtId, date, courtId) =>
@@ -34,12 +41,17 @@ export const useAvailability = (venueOrCourtId, date, courtId) =>
     queryFn: () => getAvailability(courtId || venueOrCourtId, date),
     enabled: Boolean(venueOrCourtId) && Boolean(date),
     staleTime: 1000 * 15,
+    select: (data) => {
+      const payload = unwrapApiData(data);
+      if (Array.isArray(payload)) return payload;
+      const slots = Array.isArray(payload?.slots) ? payload.slots : [];
+      return slots.map((slot) => ({
+        ...slot,
+        courtId: slot.courtId || payload?.courtId,
+        courtName: slot.courtName || payload?.courtName,
+      }));
+    },
   });
 
 export const useVenueAvailability = (venueId, date, courtId) =>
-  useQuery({
-    queryKey: ['venueAvailability', venueId, date, courtId],
-    queryFn: () => getAvailability(courtId || venueId, date),
-    enabled: Boolean(venueId) && Boolean(date),
-    staleTime: 1000 * 15,
-  });
+  useAvailability(venueId, date, courtId);

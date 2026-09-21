@@ -1,4 +1,3 @@
-import React from 'react';
 import dayjs from 'dayjs';
 import {
   Card, CardContent, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography,
@@ -14,7 +13,7 @@ export default function OwnerEarningsPage() {
   const { data: payouts = [] } = useOwnerPayouts();
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl">
       <Typography variant="h4" className="!mb-4">Earnings</Typography>
       <Grid container spacing={2} className="!mb-6">
         {[
