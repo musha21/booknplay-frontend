@@ -12,11 +12,15 @@ export default function SearchResultsPage() {
   const [sportId, setSportId] = useState(params.get('sportId') || '');
   const [city, setCity] = useState(params.get('city') || '');
   const [name, setName] = useState(params.get('name') || '');
+  const [date, setDate] = useState(params.get('date') || '');
+  const [time, setTime] = useState(params.get('time') || '');
   const sports = useSports().data || [];
   const queryParams = useMemo(() => ({
     sportId: params.get('sportId') || undefined,
     city: params.get('city') || undefined,
     name: params.get('name') || undefined,
+    date: params.get('date') || undefined,
+    time: params.get('time') || undefined,
     size: 24,
     sort: 'createdAt,desc',
   }), [params]);
@@ -25,12 +29,14 @@ export default function SearchResultsPage() {
 
   const apply = (event) => {
     event?.preventDefault();
-    setParams(buildVenueSearchParams({ sportId, city, name }));
+    setParams(buildVenueSearchParams({ sportId, city, name, date, time }));
   };
   const clear = () => {
     setSportId('');
     setCity('');
     setName('');
+    setDate('');
+    setTime('');
     setParams({});
   };
 
@@ -54,6 +60,8 @@ export default function SearchResultsPage() {
               {sports.map((sport) => <MenuItem key={sport.id} value={sport.id}>{sport.name}</MenuItem>)}
             </TextField>
             <TextField fullWidth label="City or area" value={city} onChange={(e) => setCity(e.target.value)} />
+            <TextField fullWidth type="date" label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: new Date().toLocaleDateString('en-CA') } }} />
+            <TextField fullWidth type="time" label="Time" value={time} onChange={(e) => setTime(e.target.value)} slotProps={{ inputLabel: { shrink: true }, htmlInput: { step: 1800 } }} />
             <Button fullWidth type="submit" variant="contained" startIcon={<Search />}>Apply filters</Button>
           </form>
           <section aria-label="Venue results">

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getVenues, getVenueById, getAllSports, getCourtsByVenue, getAvailability } from '../api/public';
+import { getVenues, getVenueById, getAllSports, getBusinesses, getHomepageConfig, getCourtsByVenue, getAvailability } from '../api/public';
 import { unwrapApiData, unwrapList } from '../utils/apiData';
 
 export const useSports = () =>
@@ -9,6 +9,17 @@ export const useSports = () =>
     staleTime: 1000 * 60 * 10,
     select: unwrapList,
   });
+
+export const useBusinesses = () =>
+  useQuery({
+    queryKey: ['public-businesses'],
+    queryFn: getBusinesses,
+    select: unwrapList,
+    staleTime: 1000 * 60 * 5,
+  });
+
+export const useHomepageConfig = () =>
+  useQuery({ queryKey: ['homepage-config'], queryFn: getHomepageConfig, select: unwrapApiData, staleTime: 1000 * 60 });
 
 export const useVenues = (params) =>
   useQuery({
