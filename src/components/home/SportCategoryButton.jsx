@@ -1,27 +1,28 @@
 import { createElement } from 'react';
+import { ArrowForward, Flare } from '@mui/icons-material';
 import { motion, useReducedMotion } from 'motion/react';
-import { sportAccent, sportIcon } from '../../utils/venue';
+import { sportIcon } from '../../utils/venue';
 import { fadeUp, reducedFade, staggerContainer } from '../../motion/variants';
 
-export default function SportCategoryButton({ sport, selected, count, onSelect }) {
-  const accent = sportAccent(sport.name);
+export default function SportCategoryButton({ sport, selected, onSelect }) {
+  const label = sport.displayName || sport.name;
+  const Icon = sport.all ? Flare : sportIcon(sport.name);
   return (
     <button
       type="button"
       aria-pressed={selected}
+      aria-label={label}
       onClick={onSelect}
-      className={`flex min-h-28 min-w-36 snap-start flex-col justify-between rounded-2xl border p-4 text-left transition hover:-translate-y-1 ${selected ? 'bg-navy-900 text-white' : 'border-line bg-surface text-ink'}`}
-      style={{ borderColor: selected ? accent : undefined, boxShadow: selected ? `0 0 0 2px ${accent}` : undefined }}
+      className={`hp-sport-tile ${selected ? 'is-active' : ''}`}
     >
-      <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: selected ? accent : `${accent}33`, color: selected ? '#061032' : undefined }}>
-        {createElement(sportIcon(sport.name), { className: 'transition group-hover:-translate-y-0.5' })}
-      </span>
-      <span><strong className="block text-sm">{sport.name}</strong>{count > 0 ? <small className={selected ? 'text-slate-300' : 'text-muted'}>{count} venue{count === 1 ? '' : 's'}</small> : <small className={selected ? 'text-slate-300' : 'text-muted'}>Browse</small>}</span>
+      <span className="hp-sport-symbol" aria-hidden="true">{createElement(Icon)}</span>
+      <span>{label}</span>
+      <ArrowForward className="hp-tile-arrow" />
     </button>
   );
 }
 
-export function SportCategoryGrid({ sports, sportId, venueCounts, onSelect }) {
+export function SportCategoryGrid({ sports, sportId, onSelect }) {
   const reduced = useReducedMotion();
   return (
     <motion.div
@@ -29,14 +30,13 @@ export function SportCategoryGrid({ sports, sportId, venueCounts, onSelect }) {
       initial={reduced ? false : 'hidden'}
       whileInView={reduced ? undefined : 'show'}
       viewport={{ once: true, amount: 0.2 }}
-      className="mt-7 flex snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible lg:grid-cols-6"
+      className="hp-sport-grid"
     >
-      {sports.slice(0, 6).map((sport) => (
-        <motion.div key={sport.id} variants={reduced ? reducedFade : fadeUp} className="shrink-0 sm:shrink">
+      {sports.slice(0, 4).map((sport) => (
+        <motion.div key={sport.id || sport.name} variants={reduced ? reducedFade : fadeUp}>
           <SportCategoryButton
             sport={sport}
             selected={String(sportId) === String(sport.id)}
-            count={venueCounts[sport.id]}
             onSelect={() => onSelect(sport)}
           />
         </motion.div>

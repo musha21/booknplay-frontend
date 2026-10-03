@@ -11,11 +11,10 @@ export default function ThemeToggle({ inverse = false }) {
         onClick={toggleMode}
         aria-label={`Use ${next} theme`}
         size="small"
-        sx={{ color: inverse ? 'white' : 'text.primary', border: '1px solid', borderColor: inverse ? 'rgba(255,255,255,.2)' : 'divider' }}
+        sx={{ minWidth: 44, minHeight: 44, color: inverse ? 'white' : 'text.primary', border: '1px solid', borderColor: inverse ? 'rgba(255,255,255,.2)' : 'divider' }}
       >
         {resolvedMode === 'dark' ? <LightModeOutlined /> : <DarkModeOutlined />}
       </IconButton>
     </Tooltip>
   );
 }
-

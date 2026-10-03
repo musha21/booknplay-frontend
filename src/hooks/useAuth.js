@@ -1,6 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
+import { revokeAndClearSession } from '../lib/signOut';
 import { useAuthStore } from '../stores/authStore';
 import { toast } from 'sonner';
 import { continueAfterAuth } from '../utils/bookingIntent';
@@ -34,8 +35,7 @@ const persistCustomer = (res, storeLogin) => {
 export const useAuth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
-  const { user, isAuthenticated, login: storeLogin, logout: storeLogout } = useAuthStore();
+  const { user, isAuthenticated, login: storeLogin } = useAuthStore();
 
   const loginMutation = useMutation({
     mutationFn: (credentials) => authApi.login(credentials),
@@ -63,11 +63,10 @@ export const useAuth = () => {
     },
   });
 
-  const logout = () => {
-    storeLogout();
-    queryClient.clear();
+  const logout = async () => {
+    const path = await revokeAndClearSession(useAuthStore.getState().role || 'CUSTOMER');
     toast.info('You have been logged out.');
-    navigate('/auth/login');
+    navigate(path);
   };
 
   return {

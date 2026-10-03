@@ -1,27 +1,67 @@
-import { ArrowForward, Search } from '@mui/icons-material';
-import { Button, Skeleton } from '@mui/material';
+import { useMemo, useState } from 'react';
+import { Search } from '@mui/icons-material';
+import { Skeleton } from '@mui/material';
 import { motion, useReducedMotion } from 'motion/react';
 import EmptyState from '../ui/EmptyState';
 import VenueCard from '../ui/VenueCard';
 import { staggerContainer } from '../../motion/variants';
 
-export default function VenueShowcase({ venues, loading, error, sort, onSort, onRetry, onClear, onViewAll }) {
+export default function VenueShowcase({ venues = [], loading, error, onRetry, onClear, city = 'Kandy' }) {
   const reduced = useReducedMotion();
+  const [savedIds, setSavedIds] = useState([]);
+  const [savedOnly, setSavedOnly] = useState(false);
+  const toggleSaved = (venueId) => setSavedIds((current) => current.includes(venueId) ? current.filter((id) => id !== venueId) : [...current, venueId]);
+  const visible = useMemo(() => savedOnly ? venues.filter((venue) => savedIds.includes(venue.id)) : venues, [venues, savedOnly, savedIds]);
+
+  const displayCity = city || 'Kandy';
+
   return (
-    <section id="venues" className="scroll-mt-24 border-y border-line bg-surface py-20 sm:py-24">
-      <div className="section-container">
-        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-          <div><p className="eyebrow">Places to play</p><h2 className="section-title mt-2">Featured venues</h2><p className="section-subtitle">Compare individual locations, prices and sports before choosing a time.</p></div>
-          <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Sort venues">
-            {[["recommended", "Recommended"], ["price", "Lowest price"], ["newest", "Recently added"]].map(([value, label]) => <button key={value} type="button" aria-pressed={sort === value} onClick={() => onSort(value)} className={`calendar-filter ${sort === value ? 'calendar-filter-active' : ''}`}>{label}</button>)}
-          </div>
+    <section id="venues" className="hp-section hp-venues scroll-mt-24">
+      <div className="hp-section-head">
+        <div>
+          <p className="hp-kicker">Available near you</p>
+          <h2>Play today in {displayCity}.</h2>
         </div>
-        {loading ? <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((item) => <Skeleton key={item} variant="rounded" height={350} />)}</div>
-          : error ? <div className="mt-8"><EmptyState icon={Search} title="Could not load venues" description="The venue list is unavailable right now." actionLabel="Retry" onAction={onRetry} /></div>
-            : !venues.length ? <div className="mt-8"><EmptyState icon={Search} title="No matching venues" description="Try another sport or clear the selected location." actionLabel="Clear filters" onAction={onClear} /></div>
-              : <motion.div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3" variants={reduced ? undefined : staggerContainer(0.07)} initial={reduced ? false : 'hidden'} whileInView={reduced ? undefined : 'show'} viewport={{ once: true }}>{venues.slice(0, 6).map((venue) => <VenueCard key={venue.id} venue={venue} actionLabel="Check times" />)}</motion.div>}
-        <div className="mt-8 text-center"><Button onClick={onViewAll} endIcon={<ArrowForward />}>View all matching venues</Button></div>
+        <div>
+          <p className="hp-section-note">Places ready for your next game.</p>
+        </div>
       </div>
+      <div className="hp-results-toolbar">
+        <span>{venues.length ? `${visible.length} venue${visible.length === 1 ? '' : 's'}` : 'Find your next place to play'}</span>
+        <button type="button" className={`hp-filter-saved ${savedOnly ? 'is-selected' : ''}`} aria-pressed={savedOnly} onClick={() => setSavedOnly((current) => !current)}>
+          Saved ({savedIds.length})
+        </button>
+      </div>
+      {loading ? <div className="hp-venue-grid">{[1, 2, 3, 4].map((item) => <Skeleton key={item} variant="rounded" height={320} />)}</div>
+        : error ? <EmptyState icon={Search} title="Could not load venues" description="The venue list is unavailable right now." actionLabel="Retry" onAction={onRetry} />
+          : !visible.length ? (
+            <EmptyState
+              icon={Search}
+              title={savedOnly ? 'No saved venues' : 'No matching venues'}
+              description={
+                savedOnly
+                  ? 'Save a venue to see it here.'
+                  : displayCity && displayCity !== 'Kandy'
+                    ? `No venues matched in ${displayCity}. Try widening your search or choosing another sport.`
+                    : 'Try another sport or clear the selected location.'
+              }
+              actionLabel={savedOnly ? 'Show all venues' : 'Clear filters'}
+              onAction={savedOnly ? () => setSavedOnly(false) : onClear}
+            />
+          ) : (
+            <motion.div className="hp-venue-grid" variants={reduced ? undefined : staggerContainer(0.07)} initial={reduced ? false : 'hidden'} whileInView={reduced ? undefined : 'show'} viewport={{ once: true }}>
+              {visible.map((venue) => (
+                <VenueCard
+                  key={venue.id}
+                  venue={venue}
+                  variant="home"
+                  actionLabel="View slots"
+                  saved={savedIds.includes(venue.id)}
+                  onToggleSaved={() => toggleSaved(venue.id)}
+                />
+              ))}
+            </motion.div>
+          )}
     </section>
   );
 }

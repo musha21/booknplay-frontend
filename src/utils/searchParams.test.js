@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildVenueSearchParams } from './searchParams';
+import { buildKandyVenueQuery, buildLegacySearchRedirect, buildVenueQuery, buildVenueSearchParams } from './searchParams';
 
 describe('buildVenueSearchParams', () => {
   it('uses only API-supported filters and trims search text', () => {
@@ -9,6 +9,51 @@ describe('buildVenueSearchParams', () => {
 
   it('omits empty filters', () => {
     expect(buildVenueSearchParams({ city: ' ', sportId: '' }).toString()).toBe('');
+  });
+});
+
+describe('buildLegacySearchRedirect', () => {
+  it('redirects supported filters to the homepage venue section retaining city', () => {
+    expect(buildLegacySearchRedirect('?sportId=4&city=Peradeniya&date=2026-09-20&time=18%3A30&name=Arena'))
+      .toBe('/?sportId=4&city=Peradeniya&date=2026-09-20&time=18%3A30#venues');
+  });
+
+  it('defaults to Kandy when city is not provided and discards unsupported filters', () => {
+    expect(buildLegacySearchRedirect('?name=Arena')).toBe('/?city=Kandy#venues');
+  });
+});
+
+describe('buildVenueQuery', () => {
+  it('accepts explicit city and formats parameters', () => {
+    expect(buildVenueQuery({ city: 'Katugastota', date: '2026-10-10', time: '18:30' })).toEqual({
+      city: 'Katugastota',
+      date: '2026-10-10',
+      time: '18:30',
+      size: 24,
+      sort: 'createdAt,desc',
+    });
+  });
+
+  it('defaults to Kandy when city is omitted', () => {
+    expect(buildVenueQuery({ date: '2026-10-10' })).toEqual({
+      city: 'Kandy',
+      date: '2026-10-10',
+      time: undefined,
+      size: 24,
+      sort: 'createdAt,desc',
+    });
+  });
+});
+
+describe('buildKandyVenueQuery', () => {
+  it('always restricts homepage venue discovery to Kandy', () => {
+    expect(buildKandyVenueQuery({ date: '2026-10-10', time: '18:30' })).toEqual({
+      city: 'Kandy',
+      date: '2026-10-10',
+      time: '18:30',
+      size: 24,
+      sort: 'createdAt,desc',
+    });
   });
 });
 

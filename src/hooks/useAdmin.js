@@ -14,5 +14,21 @@ export const useAdminBusinesses = () => useQuery({ queryKey: ['admin-businesses'
 export const useAdminVenues = () => useQuery({ queryKey: ['admin-venues'], queryFn: () => api.getAdminVenues({ size: 100, sort: 'createdAt,desc' }), select: (value) => value?.content || [] });
 export const useAdminCustomers = () => useQuery({ queryKey: ['admin-customers'], queryFn: () => api.getAdminCustomers({ size: 100 }), select: (value) => value?.content || [] });
 export const useAdminAudit = () => useQuery({ queryKey: ['admin-audit'], queryFn: () => api.getAdminAudit({ size: 100 }), select: (value) => value?.content || [] });
+export const useAdminSubscriptionPlans = () => useQuery({
+  queryKey: ['admin-subscription-plans'],
+  queryFn: api.getAdminSubscriptionPlans,
+  select: (value) => (Array.isArray(value) ? value : value?.content || []),
+});
 export const useHomepageDraft = () => useQuery({ queryKey: ['admin-homepage'], queryFn: api.getHomepageDraft });
-export function useAdminAction(mutationFn, invalidates) { const client = useQueryClient(); return useMutation({ mutationFn, onSuccess: () => { invalidates.forEach((key) => client.invalidateQueries({ queryKey: [key] })); toast.success('Admin action completed'); }, onError: (error) => toast.error(error.response?.data?.message || 'Action failed') }); }
+export function useAdminAction(mutationFn, invalidates) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: (data) => {
+      invalidates.forEach((key) => client.invalidateQueries({ queryKey: [key] }));
+      toast.success('Admin action completed');
+      return data;
+    },
+    onError: (error) => toast.error(error.response?.data?.message || 'Action failed'),
+  });
+}

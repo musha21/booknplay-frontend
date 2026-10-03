@@ -28,11 +28,29 @@ export const useBookingDetail = (id) =>
     enabled: Boolean(id),
   });
 
+export const useBookingQuote = (request, options = {}) =>
+  useQuery({
+    queryKey: ['bookingQuote', request],
+    queryFn: () => bookingsApi.quoteBooking(request),
+    enabled: Boolean(request),
+    retry: false,
+    ...options,
+  });
+
+export const useCancellationPreview = (bookingId, options = {}) =>
+  useQuery({
+    queryKey: ['booking', bookingId, 'cancellation-preview'],
+    queryFn: () => bookingsApi.getCancellationPreview(bookingId),
+    enabled: Boolean(bookingId),
+    retry: false,
+    ...options,
+  });
+
 export const useCreateBooking = () => {
   return useMutation({
     mutationFn: bookingsApi.createBooking,
     onSuccess: () => {
-      toast.success('Slot reserved successfully!');
+      toast.success('Booking created — continue to PayHere sandbox');
     },
     onError: (err) => {
       toast.error(err?.response?.data?.message || 'Failed to reserve slot. Please try another time.');
@@ -45,9 +63,17 @@ export const useCancelBooking = () => {
   return useMutation({
     mutationFn: bookingsApi.cancelBooking,
     onSuccess: (res, bookingId) => {
-      toast.success('Booking cancelled successfully');
-      queryClient.invalidateQueries(['booking', bookingId]);
-      queryClient.invalidateQueries(['bookings']);
+      const result = res?.data ?? res;
+      const refund = result?.refund;
+      toast.success(refund?.status === 'SUCCEEDED'
+        ? (refund?.mode === 'PAYHERE'
+          ? 'Booking cancelled. Refund sent to your original PayHere payment method.'
+          : 'Booking cancelled and refund recorded')
+        : 'Booking cancelled successfully. The court slot is free again.');
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['availability'] });
+      queryClient.invalidateQueries({ queryKey: ['bookingQuote'] });
     },
     onError: (err) => {
       toast.error(err?.response?.data?.message || 'Failed to cancel booking.');

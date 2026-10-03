@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Paper, TextField, Button } from '@mui/material';
+import { TextField, Button } from '@mui/material';
 import useAuthStore from '../../stores/authStore';
 import { toast } from 'sonner';
 
@@ -19,9 +19,11 @@ export default function ProfilePage() {
   };
 
   return (
-    <Paper elevation={1} className="p-6 !rounded-2xl !bg-white">
-      <h2 className="text-2xl font-bold text-navy-900 mb-6">Profile Settings</h2>
-      <form onSubmit={handleSave} className="space-y-4 max-w-md">
+    <div className="customer-panel p-5 sm:p-7">
+      <p className="eyebrow">Personal details</p>
+      <h2 className="customer-card-title mt-2">Profile settings</h2>
+      <p className="customer-body mt-2">Keep your contact details accurate for booking updates.</p>
+      <form onSubmit={handleSave} className="mt-6 max-w-xl space-y-4 rounded-2xl border border-line bg-canvas/60 p-4 sm:p-5">
         <TextField
           fullWidth
           label="First Name"
@@ -46,10 +48,10 @@ export default function ProfilePage() {
           value={formData.phone}
           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
         />
-        <Button type="submit" variant="contained" className="!bg-navy-700 !text-white !font-bold !py-3">
+        <Button type="submit" variant="contained" className="!bg-navy-900 !px-6 !py-3 !font-bold !text-white hover:!bg-navy-800">
           Save Changes
         </Button>
       </form>
-    </Paper>
+    </div>
   );
 }

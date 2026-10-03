@@ -1,28 +1,16 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Alert, Box, Button, Container, Paper, Stack, TextField, Typography } from '@mui/material';
-import { AddPhotoAlternate } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useOwnerRegister } from '../../hooks/useOwner';
 import { uploadBusinessImages } from '../../api/ownerBusiness';
-import BrandLogo from '../../components/ui/BrandLogo';
-import ThemeToggle from '../../components/ui/ThemeToggle';
+import AuthAccessShell from '../../components/auth/AuthAccessShell';
 
 function ImageTile({ label, preview, onPick }) {
   return (
-    <Button
-      component="label"
-      variant="outlined"
-      sx={{ height: 120, borderStyle: 'dashed', flexDirection: 'column', gap: 1 }}
-    >
-      {preview ? <img src={preview} alt={label} className="h-full w-full object-cover rounded-lg" /> : (
-        <>
-          <AddPhotoAlternate />
-          <span className="text-xs">{label}</span>
-        </>
-      )}
-      <input type="file" accept="image/*" hidden onChange={(e) => onPick(e.target.files?.[0])} />
-    </Button>
+    <label className="auth-upload">
+      {preview ? <img src={preview} alt={label} /> : label}
+      <input type="file" accept="image/*" onChange={(event) => onPick(event.target.files?.[0])} />
+    </label>
   );
 }
 
@@ -39,13 +27,12 @@ export default function OwnerRegisterPage() {
     confirmPassword: '',
   });
   const [logo, setLogo] = useState(null);
-  const [gallery, setGallery] = useState([null, null, null]);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
 
-  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match');
@@ -61,9 +48,8 @@ export default function OwnerRegisterPage() {
         address: form.address,
         password: form.password,
       });
-      const images = gallery.filter(Boolean);
-      if (logo || images.length) {
-        await uploadBusinessImages({ logo, images });
+      if (logo) {
+        await uploadBusinessImages({ logo });
       }
       navigate('/owner/venues/new');
     } catch (err) {
@@ -73,50 +59,60 @@ export default function OwnerRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-navy-900 flex items-center justify-center p-4 pt-24 relative">
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5 sm:px-8"><BrandLogo inverse /><ThemeToggle inverse /></div>
-      <Container maxWidth="sm">
-        <Paper className="p-8 !rounded-3xl">
-          <Typography variant="h5" fontWeight={800}>Business Registration</Typography>
-          <Typography variant="body2" color="text.secondary" className="!mb-6">Register your business, then add venues.</Typography>
-          {error && <Alert severity="error" className="mb-4">{error}</Alert>}
-          <form onSubmit={handleSubmit}>
-            <Typography variant="subtitle2" className="!mb-2">Business Information</Typography>
-            <Stack spacing={2}>
-              <TextField required label="Business Name" value={form.businessName} onChange={set('businessName')} />
-              <TextField required label="Owner Name" value={form.ownerName} onChange={set('ownerName')} />
-              <TextField required type="email" label="Email" value={form.email} onChange={set('email')} />
-              <TextField required label="Phone" value={form.contactPhone} onChange={set('contactPhone')} helperText="Include country code, e.g. +9477..." />
-              <TextField required label="Address" value={form.address} onChange={set('address')} />
-              <TextField required type="password" label="Password" value={form.password} onChange={set('password')} />
-              <TextField required type="password" label="Confirm password" value={form.confirmPassword} onChange={set('confirmPassword')} />
-            </Stack>
-            <Typography variant="subtitle2" className="!mt-6 !mb-2">Business Images</Typography>
-            <Typography variant="caption" color="text.secondary">Maximum: 4 images (logo + 3)</Typography>
-            <Box className="grid grid-cols-2 gap-2 mt-2">
-              <ImageTile label="Business Logo" preview={logo && URL.createObjectURL(logo)} onPick={setLogo} />
-              {gallery.map((file, i) => (
-                <ImageTile
-                  key={i}
-                  label={`Business Image ${i + 1}`}
-                  preview={file && URL.createObjectURL(file)}
-                  onPick={(f) => {
-                    const next = [...gallery];
-                    next[i] = f;
-                    setGallery(next);
-                  }}
-                />
-              ))}
-            </Box>
-            <Button type="submit" fullWidth variant="contained" className="!mt-6" disabled={registerMutation.isPending}>
-              {registerMutation.isPending ? 'Registering…' : 'Register Business'}
-            </Button>
-          </form>
-          <Typography variant="body2" className="!mt-4 !text-center">
-            Already registered? <Link to="/owner/login">Sign in</Link>
-          </Typography>
-        </Paper>
-      </Container>
-    </div>
+    <AuthAccessShell
+      role="owner"
+      mode="register"
+      kicker="BooknPlay for business"
+      title="Let’s grow your venue."
+      subtitle="Create your owner account. Set up your venue next."
+      alternate={{ prompt: 'Already part of the game?', label: 'Sign in', to: '/owner/login' }}
+    >
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div className="auth-field">
+          <label htmlFor="businessName">Business name</label>
+          <input id="businessName" value={form.businessName} onChange={set('businessName')} required />
+        </div>
+        <div className="auth-field">
+          <label htmlFor="ownerName">Owner name</label>
+          <input id="ownerName" autoComplete="name" value={form.ownerName} onChange={set('ownerName')} required />
+        </div>
+        <div className="auth-field">
+          <label htmlFor="email">Work email</label>
+          <input id="email" type="email" autoComplete="email" placeholder="you@example.com" value={form.email} onChange={set('email')} required />
+        </div>
+        <div className="auth-field">
+          <label htmlFor="contactPhone">Phone</label>
+          <input id="contactPhone" type="tel" autoComplete="tel" placeholder="+94771234567" value={form.contactPhone} onChange={set('contactPhone')} required />
+          <p className="auth-note">Include the country code, for example +9477.</p>
+        </div>
+        <div className="auth-field">
+          <label htmlFor="address">Address</label>
+          <textarea id="address" value={form.address} onChange={set('address')} required />
+        </div>
+        <div className="auth-field">
+          <label htmlFor="password">Password</label>
+          <div className="auth-password">
+            <input id="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Create a password" value={form.password} onChange={set('password')} required />
+            <button type="button" className="auth-show" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((visible) => !visible)}>{showPassword ? 'Hide' : 'Show'}</button>
+          </div>
+        </div>
+        <div className="auth-field">
+          <label htmlFor="confirmPassword">Confirm password</label>
+          <input id="confirmPassword" type={showPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Repeat your password" value={form.confirmPassword} onChange={set('confirmPassword')} required />
+        </div>
+        <div className="auth-field">
+          <label>Business logo</label>
+          <p className="auth-note">Optional. You can add venue photos when you create a venue.</p>
+          <div className="auth-uploads">
+            <ImageTile label="Business logo" preview={logo ? URL.createObjectURL(logo) : ''} onPick={setLogo} />
+          </div>
+        </div>
+        {error && <p className="auth-error" role="alert">{error}</p>}
+        <p className="auth-note">Next: business details, your first venue, sports and courts.</p>
+        <button className="auth-primary" type="submit" disabled={registerMutation.isPending}>
+          {registerMutation.isPending ? 'Registering…' : <>Create account <span aria-hidden="true">↗</span></>}
+        </button>
+      </form>
+    </AuthAccessShell>
   );
 }

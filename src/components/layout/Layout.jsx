@@ -4,7 +4,7 @@ import Footer from './Footer';
 
 export default function Layout() {
   return (
-    <div className="min-h-screen flex flex-col bg-canvas text-ink font-sans">
+    <div className="customer-shell min-h-screen flex flex-col bg-canvas text-ink font-sans">
       <Navbar />
       <main className="flex-1">
         <Outlet />
