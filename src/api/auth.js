@@ -16,10 +16,13 @@ export const refresh = (refreshToken) =>
   apiClient.post('/customer/auth/refresh', { refreshToken });
 
 export const logout = (refreshToken) =>
-  apiClient.post('/customer/auth/logout', { refreshToken });
+  apiClient.post('/customer/auth/logout', { refreshToken }, { skipAuthRefresh: true });
 
 export const getMe = () =>
   apiClient.get('/customer/auth/me');
+
+export const requestPasswordReset = (email) =>
+  apiClient.post('/customer/auth/forgot-password', { email });
 
 export const authApi = {
   login,
@@ -28,6 +31,8 @@ export const authApi = {
   refresh,
   logout,
   getMe,
+  requestPasswordReset,
 };
 
 export default authApi;
+

@@ -1,18 +1,62 @@
 import { Link } from 'react-router-dom';
+import logoMarkDaylight from '../../assets/brand/logo-mark-daylight.png';
+import logoMarkBrand from '../../assets/brand/logo-mark.png';
 
-export default function BrandLogo({ to = '/', inverse = false, compact = false, className = '' }) {
+function Wordmark({ inverse = false }) {
   return (
-    <Link to={to} aria-label="Booknplay.lk home" className={`inline-flex items-center gap-2 no-underline ${className}`}>
-      <svg aria-hidden="true" viewBox="0 0 40 40" className="h-9 w-9 shrink-0">
-        <circle cx="20" cy="20" r="17" fill={inverse ? '#fff' : '#061032'} />
-        <path d="M7 20h26M20 3c-5 5-7 11-7 17s2 12 7 17" fill="none" stroke="#A3E635" strokeWidth="6" />
-      </svg>
-      {!compact && (
-        <span className={`text-xl font-black tracking-[-.04em] ${inverse ? 'text-white' : 'text-ink'}`}>
-          bookn<span className="text-lime-500">play</span><span className={inverse ? 'text-white' : 'text-ink'}>.lk</span>
-        </span>
-      )}
-    </Link>
+    <span className={`brand-logo-wordmark${inverse ? ' is-inverse' : ''}`}>
+      booknplay<small>.lk</small>
+    </span>
   );
 }
 
+function Mark({ className = '', inverse = false }) {
+  return (
+    <img
+      src={inverse ? logoMarkBrand : logoMarkDaylight}
+      alt=""
+      aria-hidden="true"
+      className={`brand-logo-mark ${className}`.trim()}
+      draggable={false}
+    />
+  );
+}
+
+export default function BrandLogo({
+  to = '/',
+  inverse = false,
+  compact = false,
+  linked = true,
+  variant = 'default',
+  className = '',
+}) {
+  const Wrapper = linked ? Link : 'div';
+  const linkProps = linked
+    ? { to, 'aria-label': 'Booknplay.lk home' }
+    : { 'aria-label': 'Booknplay.lk' };
+
+  if (variant === 'home') {
+    const mark = (
+      <>
+        <Mark className="hp-brand-mark" inverse={inverse} />
+        <Wordmark inverse={inverse} />
+      </>
+    );
+    if (!linked) return <div className={`hp-brand ${className}`.trim()}>{mark}</div>;
+    return (
+      <Link to={to} aria-label="Booknplay.lk home" className={`hp-brand ${className}`.trim()}>
+        {mark}
+      </Link>
+    );
+  }
+
+  return (
+    <Wrapper
+      {...linkProps}
+      className={`brand-logo inline-flex items-center gap-2 no-underline ${className}`.trim()}
+    >
+      <Mark inverse={inverse} />
+      {!compact && <Wordmark inverse={inverse} />}
+    </Wrapper>
+  );
+}

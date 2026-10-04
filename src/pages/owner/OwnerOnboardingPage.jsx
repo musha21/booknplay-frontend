@@ -11,22 +11,27 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'sonner';
 import LocationPicker from '../../components/owner/LocationPicker';
+import BookingPolicyForm from '../../components/owner/BookingPolicyForm';
 import { onboardVenue } from '../../api/ownerVenues';
 import useAuthStore from '../../stores/authStore';
+import {
+  DEFAULT_BOOKING_POLICY, bookingPolicyPayload, validateBookingPolicy,
+} from '../../utils/bookingPolicy';
+import { buildResourceNames, resourceLabelForSport } from '../../utils/courtResource';
 
-const STEPS = ['Sports', 'Location', 'Hours', 'Pricing', 'Amenities', 'Rules', 'Preview'];
+const STEPS = ['Sports', 'Location', 'Hours', 'Pricing', 'Booking & Cancellation', 'Amenities', 'Rules', 'Preview'];
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const SPORT_CATALOG = [
-  { name: 'Indoor Cricket', resource: 'Court', icon: <SportsCricket /> },
-  { name: 'Badminton', resource: 'Court', icon: <SportsTennis /> },
-  { name: 'Futsal / Indoor Football', resource: 'Pitch', icon: <SportsSoccer /> },
-  { name: 'Basketball', resource: 'Court', icon: <SportsBasketball /> },
-  { name: 'Volleyball', resource: 'Court', icon: <SportsVolleyball /> },
-  { name: 'Table Tennis', resource: 'Table', icon: <SportsTennis /> },
-  { name: 'Squash', resource: 'Court', icon: <SportsTennis /> },
-  { name: 'Padel', resource: 'Court', icon: <SportsTennis /> },
-  { name: '8-Ball Pool', resource: 'Pool Table', icon: <Casino /> },
-  { name: 'Swimming', resource: 'Lane', icon: <Pool /> },
+  { name: 'Indoor Cricket', resource: resourceLabelForSport('Indoor Cricket'), icon: <SportsCricket /> },
+  { name: 'Badminton', resource: resourceLabelForSport('Badminton'), icon: <SportsTennis /> },
+  { name: 'Futsal / Indoor Football', resource: resourceLabelForSport('Futsal / Indoor Football'), icon: <SportsSoccer /> },
+  { name: 'Basketball', resource: resourceLabelForSport('Basketball'), icon: <SportsBasketball /> },
+  { name: 'Volleyball', resource: resourceLabelForSport('Volleyball'), icon: <SportsVolleyball /> },
+  { name: 'Table Tennis', resource: resourceLabelForSport('Table Tennis'), icon: <SportsTennis /> },
+  { name: 'Squash', resource: resourceLabelForSport('Squash'), icon: <SportsTennis /> },
+  { name: 'Padel', resource: resourceLabelForSport('Padel'), icon: <SportsTennis /> },
+  { name: '8-Ball Pool', resource: resourceLabelForSport('8-Ball Pool'), icon: <Casino /> },
+  { name: 'Swimming', resource: resourceLabelForSport('Swimming'), icon: <Pool /> },
 ];
 const AMENITIES = [
   'Parking', 'Changing Room', 'Shower', 'Washroom', 'Drinking Water', 'Wi-Fi',
@@ -43,9 +48,6 @@ const defaultHours = () => DAYS.map((day) => ({
   closed: false,
 }));
 
-const letterNames = (resource, quantity) =>
-  Array.from({ length: quantity }, (_, i) => `${resource} ${String.fromCharCode(65 + i)}`);
-
 export default function OwnerOnboardingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -58,6 +60,7 @@ export default function OwnerOnboardingPage() {
   const [facilities, setFacilities] = useState([]);
   const [hours, setHours] = useState(defaultHours());
   const [pricing, setPricing] = useState({});
+  const [bookingPolicy, setBookingPolicy] = useState(DEFAULT_BOOKING_POLICY);
   const [amenities, setAmenities] = useState([]);
   const [rules, setRules] = useState([]);
   const [additionalRules, setAdditionalRules] = useState('');
@@ -87,7 +90,7 @@ export default function OwnerOnboardingPage() {
   const confirmSportQuantity = () => {
     if (!dialogSport) return;
     const quantity = Math.max(1, Number(dialogQty) || 1);
-    const courtNames = letterNames(dialogSport.resource, quantity);
+    const courtNames = buildResourceNames(dialogSport.resource, quantity);
     setFacilities((prev) => {
       const next = prev.filter((f) => f.sportName !== dialogSport.name);
       return [...next, { sportName: dialogSport.name, resource: dialogSport.resource, quantity, courtNames }];
@@ -125,9 +128,11 @@ export default function OwnerOnboardingPage() {
 
   const validate = () => {
     if (step === 0 && facilities.length === 0) return 'Select at least one sport';
-    if (step === 0 && facilities.some((f) => !f.quantity || f.quantity < 1)) return 'Each sport needs at least 1 court';
+    if (step === 0 && facilities.some((f) => !f.quantity || f.quantity < 1)) return 'Each sport needs at least 1 bookable space';
     if (step === 1 && (!location?.formattedAddress || location.latitude == null)) return 'Select a map location';
-    if (step === 3 && facilities.some((f) => !Number(pricing[f.sportName]?.price))) return 'Set a price for each sport';
+    if (step === 2 && hours.filter((h) => !h.closed).some((h) => h.openTime >= h.closeTime)) return 'Open time must be before close time on active operating days';
+    if (step === 3 && facilities.some((f) => !Number(pricing[f.sportName]?.price) || Number(pricing[f.sportName]?.price) <= 0)) return 'Set a valid price above 0 for each sport';
+    if (step === 4 && validateBookingPolicy(bookingPolicy).length) return validateBookingPolicy(bookingPolicy).join(' ');
     return '';
   };
 
@@ -148,8 +153,9 @@ export default function OwnerOnboardingPage() {
 
   const submit = async () => {
     const msg = validate();
-    if (msg) {
-      setError(msg);
+    const policyErrors = validateBookingPolicy(bookingPolicy);
+    if (msg || policyErrors.length) {
+      setError(msg || policyErrors.join(' '));
       return;
     }
     setSaving(true);
@@ -175,6 +181,7 @@ export default function OwnerOnboardingPage() {
           openTime: h.openTime?.length === 5 ? `${h.openTime}:00` : h.openTime,
           closeTime: h.closeTime?.length === 5 ? `${h.closeTime}:00` : h.closeTime,
         })),
+        cancellationPolicy: bookingPolicyPayload(bookingPolicy),
         amenities,
         rulePresets: rules,
         additionalRules,
@@ -186,9 +193,26 @@ export default function OwnerOnboardingPage() {
       navigate('/owner');
     } catch (err) {
       if (err.response?.status === 403) {
-        setError('Your signed-in account is not allowed to create venues. Sign out and sign in with a business-owner account.');
+        const code = String(err.response?.data?.code || '').toUpperCase();
+        if (code === 'PLAN_LIMIT') {
+          setError(err.response?.data?.message || 'Your plan venue limit is reached. Upgrade on Billing to add more venues.');
+        } else {
+          setError('Your signed-in account is not allowed to create venues. Sign out and sign in with a business-owner account.');
+        }
       } else {
-        setError(err.response?.data?.message || 'Could not create venue');
+        const errorData = err.response?.data;
+        const mainMessage = errorData?.message || 'Could not create venue';
+
+        if (errorData?.errors) {
+          const keys = Object.keys(errorData.errors);
+          if (keys.some((k) => k.includes('facility') || k.includes('sport'))) setStep(0);
+          else if (keys.some((k) => k.includes('address') || k.includes('city') || k.includes('location'))) setStep(1);
+          else if (keys.some((k) => k.includes('hour'))) setStep(2);
+          else if (keys.some((k) => k.includes('price'))) setStep(3);
+          else if (keys.some((k) => k.includes('policy') || k.includes('cancellation'))) setStep(4);
+        }
+
+        setError(mainMessage);
       }
     } finally {
       setSaving(false);
@@ -213,7 +237,7 @@ export default function OwnerOnboardingPage() {
       {step === 0 && (
         <Stack spacing={2}>
           <Typography variant="h4">Which sports can customers book?</Typography>
-          <Typography color="text.secondary">Select every sport you offer. Each click asks how many courts, pitches, or tables to create (named A, B, C…).</Typography>
+          <Typography color="text.secondary">Select every sport you offer. Each click asks how many courts, pitches, tables, or lanes to create (named A, B, C…).</Typography>
           <Box className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {displayedSports.map((sport) => {
               const selected = facilities.find((f) => f.sportName === sport.name);
@@ -299,6 +323,19 @@ export default function OwnerOnboardingPage() {
 
       {step === 4 && (
         <Stack spacing={2}>
+          <Typography variant='h4'>Set your booking and cancellation policy</Typography>
+          <Typography color='text.secondary'>Set the business-level cancellation deadline and refund percentage for future bookings.</Typography>
+          <BookingPolicyForm
+            value={bookingPolicy}
+            onChange={setBookingPolicy}
+            exampleTotal={startingPrice || 4000}
+            showErrors={Boolean(error)}
+          />
+        </Stack>
+      )}
+
+      {step === 5 && (
+        <Stack spacing={2}>
           <Typography variant="h4">What does your venue offer?</Typography>
           <Box className="flex flex-wrap gap-2">
             {AMENITIES.map((item) => (
@@ -308,7 +345,7 @@ export default function OwnerOnboardingPage() {
         </Stack>
       )}
 
-      {step === 5 && (
+      {step === 6 && (
         <Stack spacing={2}>
           <Typography variant="h4">Set venue rules</Typography>
           <Box className="flex flex-wrap gap-2">
@@ -320,7 +357,7 @@ export default function OwnerOnboardingPage() {
         </Stack>
       )}
 
-      {step === 6 && (
+      {step === 7 && (
         <Card className="p-6">
           <Typography variant="h4">{businessName && venueType ? `${businessName} - ${venueType}` : venueType || 'Your venue'}</Typography>
           <Typography className="!mt-1">📍 {location?.formattedAddress}</Typography>
@@ -335,6 +372,14 @@ export default function OwnerOnboardingPage() {
           <Typography variant="body2">{amenities.join(', ') || 'None yet'}</Typography>
           <Typography variant="subtitle2" className="!mt-3">Opening hours</Typography>
           <Typography variant="body2">{hours.find((h) => !h.closed)?.openTime} — {hours.find((h) => !h.closed)?.closeTime}</Typography>
+          <Typography variant="subtitle2" className="!mt-3">Cancellation policy</Typography>
+          <Typography variant="body2">
+            Full development payment
+            {' · '}
+            {bookingPolicy.cancellationAllowed
+              ? 'Free cancellation within 1 hour of booking (full refund)'
+              : 'Customer cancellation disabled'}
+          </Typography>
         </Card>
       )}
 
@@ -367,7 +412,7 @@ export default function OwnerOnboardingPage() {
           />
           {dialogQty > 0 && dialogSport && (
             <Typography variant="body2" className="!mt-3" color="text.secondary">
-              Names: {letterNames(dialogSport.resource, Math.max(1, Number(dialogQty) || 1)).join(', ')}
+              Names: {buildResourceNames(dialogSport.resource, Math.max(1, Number(dialogQty) || 1)).join(', ')}
             </Typography>
           )}
         </DialogContent>
@@ -382,7 +427,7 @@ export default function OwnerOnboardingPage() {
         <DialogTitle>Add another sport</DialogTitle>
         <DialogContent className="flex flex-col gap-3 !pt-2">
           <TextField autoFocus label="Sport name" placeholder="e.g. Pickleball" value={customSport.name} onChange={(e) => setCustomSport({ ...customSport, name: e.target.value })} />
-          <TextField label="Facility type" placeholder="e.g. Court, Pitch, Table" value={customSport.resource} onChange={(e) => setCustomSport({ ...customSport, resource: e.target.value })} />
+          <TextField label="Facility type" placeholder="e.g. Court, Pitch, Table, Lane" value={customSport.resource} onChange={(e) => setCustomSport({ ...customSport, resource: e.target.value })} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCustomSportOpen(false)}>Cancel</Button>

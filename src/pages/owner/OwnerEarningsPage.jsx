@@ -1,10 +1,11 @@
 import dayjs from 'dayjs';
-import {
-  Card, CardContent, Grid, Table, TableBody, TableCell, TableHead, TableRow, Typography,
-} from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
+import { Button } from '@mui/material';
+import { OwnerPage, OwnerPageHeader, OwnerSection, OwnerStatRow } from '../../components/owner/OwnerDashboardUi';
 import { useOwnerEarnings, useOwnerPayouts } from '../../hooks/useOwner';
 
-const formatLkr = (value) => `LKR ${Number(value || 0).toLocaleString()}`;
+const formatLkr = (value) =>
+  Number(value || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function OwnerEarningsPage() {
   const from = dayjs().subtract(29, 'day').format('YYYY-MM-DD');
@@ -13,73 +14,87 @@ export default function OwnerEarningsPage() {
   const { data: payouts = [] } = useOwnerPayouts();
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <Typography variant="h4" className="!mb-4">Earnings</Typography>
-      <Grid container spacing={2} className="!mb-6">
-        {[
-          ['Bookings', summary?.bookingCount ?? 0],
-          ['Gross', formatLkr(summary?.gross)],
-          ['Commission', formatLkr(summary?.commission)],
-          ['Net', formatLkr(summary?.net)],
-        ].map(([label, value]) => (
-          <Grid item xs={12} sm={6} md={3} key={label}>
-            <Card>
-              <CardContent>
-                <Typography variant="body2" color="text.secondary">{label}</Typography>
-                <Typography variant="h5">{value}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+    <OwnerPage className="max-w-6xl">
+      <OwnerPageHeader
+        eyebrow="Money"
+        title="Earnings"
+        description={`Confirmed and completed bookings from ${from} to ${to}.`}
+        actions={(
+          <Button component={RouterLink} to="/owner/reports" variant="outlined">
+            Open reports
+          </Button>
+        )}
+      />
 
-      <Typography variant="h6" className="!mb-2">Daily breakdown</Typography>
-      <Table size="small" className="!mb-8">
-        <TableHead>
-          <TableRow>
-            <TableCell>Date</TableCell>
-            <TableCell>Bookings</TableCell>
-            <TableCell>Gross</TableCell>
-            <TableCell>Commission</TableCell>
-            <TableCell>Net</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
+      <OwnerSection className="mt-8 border-y border-line py-8">
+        <OwnerStatRow
+          items={[
+            { label: 'Bookings', value: summary?.bookingCount ?? 0, detail: 'In this range', emphasis: true },
+            { label: 'Gross', prefix: 'LKR', value: formatLkr(summary?.gross), detail: 'Before commission', emphasis: true },
+            { label: 'Commission', value: formatLkr(summary?.commission), detail: `${summary?.commissionPercent ?? 10}% platform share` },
+            { label: 'Net', value: formatLkr(summary?.net), detail: 'After commission' },
+            { label: 'Payouts', value: payouts.length, detail: 'Recorded transfers' },
+          ]}
+        />
+      </OwnerSection>
+
+      <OwnerSection className="mt-8">
+        <h2 className="text-xl font-black text-ink">Daily breakdown</h2>
+        <div className="mt-4 hidden overflow-x-auto rounded-2xl border border-line md:block">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-canvas/80 text-xs font-extrabold uppercase tracking-wider text-muted">
+              <tr>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Bookings</th>
+                <th className="px-4 py-3">Gross</th>
+                <th className="px-4 py-3">Commission</th>
+                <th className="px-4 py-3">Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(summary?.daily || []).map((row) => (
+                <tr key={row.date} className="border-t border-line">
+                  <td className="px-4 py-3 font-bold text-ink">{row.date}</td>
+                  <td className="px-4 py-3 text-muted">{row.bookingCount}</td>
+                  <td className="px-4 py-3 text-ink" style={{ fontVariantNumeric: 'tabular-nums' }}>LKR {formatLkr(row.gross)}</td>
+                  <td className="px-4 py-3 text-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>LKR {formatLkr(row.commission)}</td>
+                  <td className="px-4 py-3 font-bold text-ink" style={{ fontVariantNumeric: 'tabular-nums' }}>LKR {formatLkr(row.net)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4 grid gap-3 md:hidden">
           {(summary?.daily || []).map((row) => (
-            <TableRow key={row.date}>
-              <TableCell>{row.date}</TableCell>
-              <TableCell>{row.bookingCount}</TableCell>
-              <TableCell>{formatLkr(row.gross)}</TableCell>
-              <TableCell>{formatLkr(row.commission)}</TableCell>
-              <TableCell>{formatLkr(row.net)}</TableCell>
-            </TableRow>
+            <article key={row.date} className="surface-card p-4">
+              <p className="text-sm font-extrabold text-ink">{row.date}</p>
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div><dt className="text-muted">Bookings</dt><dd className="font-bold text-ink">{row.bookingCount}</dd></div>
+                <div><dt className="text-muted">Gross</dt><dd className="font-bold text-ink">LKR {formatLkr(row.gross)}</dd></div>
+                <div><dt className="text-muted">Commission</dt><dd className="font-bold text-ink">LKR {formatLkr(row.commission)}</dd></div>
+                <div><dt className="text-muted">Net</dt><dd className="font-bold text-ink">LKR {formatLkr(row.net)}</dd></div>
+              </dl>
+            </article>
           ))}
-        </TableBody>
-      </Table>
+        </div>
+      </OwnerSection>
 
-      <Typography variant="h6" className="!mb-2">Payout history</Typography>
-      {payouts.length === 0 ? (
-        <Typography color="text.secondary">No payouts recorded yet. Bank transfers land in Phase 3.</Typography>
-      ) : (
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Period</TableCell>
-              <TableCell>Net</TableCell>
-              <TableCell>Status</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+      <OwnerSection className="mt-10">
+        <h2 className="text-xl font-black text-ink">Payout history</h2>
+        {payouts.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">No payouts recorded yet.</p>
+        ) : (
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {payouts.map((payout) => (
-              <TableRow key={payout.id}>
-                <TableCell>{payout.periodStart} → {payout.periodEnd}</TableCell>
-                <TableCell>{formatLkr(payout.net)}</TableCell>
-                <TableCell>{payout.status}</TableCell>
-              </TableRow>
+              <article key={payout.id} className="surface-card p-4">
+                <p className="text-sm font-extrabold text-ink">{payout.periodStart} → {payout.periodEnd}</p>
+                <p className="mt-2 text-2xl font-black text-ink" style={{ fontVariantNumeric: 'tabular-nums' }}>LKR {formatLkr(payout.net)}</p>
+                <p className="mt-1 text-xs font-bold uppercase tracking-wider text-muted">{payout.status}</p>
+              </article>
             ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
+          </div>
+        )}
+      </OwnerSection>
+    </OwnerPage>
   );
 }

@@ -12,4 +12,20 @@ export const uploadBusinessImages = ({ logo, images, profileImage }) => {
   });
 };
 
+export const reorderBusinessImages = (mediaIds) =>
+  apiClient.patch('/owner/business/images/order', { mediaIds });
+
+export const deleteBusinessImage = (mediaId) =>
+  apiClient.delete(`/owner/business/images/${mediaId}`);
+
 export const changeOwnerPassword = (data) => apiClient.put('/owner/auth/password', data);
+
+export const ownerBusinessApi = {
+  updateBusiness,
+  uploadBusinessImages,
+  reorderBusinessImages,
+  deleteBusinessImage,
+  changeOwnerPassword,
+};
+
+export default ownerBusinessApi;

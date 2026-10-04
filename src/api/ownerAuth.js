@@ -10,10 +10,13 @@ export const refreshOwner = (refreshToken) =>
   apiClient.post('/owner/auth/refresh', { refreshToken });
 
 export const logoutOwner = (refreshToken) =>
-  apiClient.post('/owner/auth/logout', { refreshToken });
+  apiClient.post('/owner/auth/logout', { refreshToken }, { skipAuthRefresh: true });
 
 export const getOwnerMe = () =>
   apiClient.get('/owner/auth/me');
+
+export const requestOwnerPasswordReset = (email) =>
+  apiClient.post('/owner/auth/forgot-password', { email });
 
 export const ownerAuthApi = {
   registerOwner,
@@ -21,6 +24,7 @@ export const ownerAuthApi = {
   refreshOwner,
   logoutOwner,
   getOwnerMe,
+  requestOwnerPasswordReset,
 };
 
 export default ownerAuthApi;

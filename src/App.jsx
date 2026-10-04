@@ -15,8 +15,8 @@ const Layout = lazy(() => import('./components/layout/Layout'));
 const ProtectedRoute = lazy(() => import('./components/layout/ProtectedRoute'));
 const OwnerProtectedRoute = lazy(() => import('./components/layout/OwnerProtectedRoute'));
 const OwnerLayout = lazy(() => import('./components/layout/OwnerLayout'));
+const LegacySearchRedirect = lazy(() => import('./components/layout/LegacySearchRedirect'));
 const HomePage = lazy(() => import('./pages/HomePage'));
-const SearchResultsPage = lazy(() => import('./pages/SearchResultsPage'));
 const VenueDetailPage = lazy(() => import('./pages/VenueDetailPage'));
 const ChooseSlotPage = lazy(() => import('./pages/ChooseSlotPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
@@ -24,6 +24,7 @@ const PaymentReturnPage = lazy(() => import('./pages/PaymentReturnPage'));
 const BookingDetailPage = lazy(() => import('./pages/BookingDetailPage'));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
 const AccountPage = lazy(() => import('./pages/account/AccountPage'));
 const UpcomingBookingsPage = lazy(() => import('./pages/account/UpcomingBookingsPage'));
 const BookingHistoryPage = lazy(() => import('./pages/account/BookingHistoryPage'));
@@ -33,23 +34,32 @@ const PrivacyPage = lazy(() => import('./pages/account/PrivacyPage'));
 const HelpPage = lazy(() => import('./pages/account/HelpPage'));
 const OwnerLoginPage = lazy(() => import('./pages/owner/OwnerLoginPage'));
 const OwnerRegisterPage = lazy(() => import('./pages/owner/OwnerRegisterPage'));
+const OwnerForgotPasswordPage = lazy(() => import('./pages/owner/OwnerForgotPasswordPage'));
+const OwnerHomeRedirect = lazy(() => import('./pages/owner/OwnerHomeRedirect'));
 const OwnerVenuesPage = lazy(() => import('./pages/owner/OwnerVenuesPage'));
 const OwnerOnboardingPage = lazy(() => import('./pages/owner/OwnerOnboardingPage'));
 const OwnerCourtsPage = lazy(() => import('./pages/owner/OwnerCourtsPage'));
 const OwnerCalendarPage = lazy(() => import('./pages/owner/OwnerCalendarPage'));
+const OwnerBookingPolicyPage = lazy(() => import('./pages/owner/OwnerBookingPolicyPage'));
+const OwnerVenueEditPage = lazy(() => import('./pages/owner/OwnerVenueEditPage'));
 const OwnerEarningsPage = lazy(() => import('./pages/owner/OwnerEarningsPage'));
+const OwnerReportsPage = lazy(() => import('./pages/owner/OwnerReportsPage'));
+const OwnerTeamPage = lazy(() => import('./pages/owner/OwnerTeamPage'));
+const OwnerBillingPage = lazy(() => import('./pages/owner/OwnerBillingPage'));
+const OwnerBillingReturnPage = lazy(() => import('./pages/owner/OwnerBillingReturnPage'));
 const OwnerProfilePage = lazy(() => import('./pages/owner/OwnerProfilePage'));
 const AdminProtectedRoute = lazy(() => import('./components/layout/AdminProtectedRoute'));
 const AdminLayout = lazy(() => import('./components/layout/AdminLayout'));
 const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
 const AdminHomepagePage = lazy(() => import('./pages/admin/AdminHomepagePage'));
+const AdminPlansPage = lazy(() => import('./pages/admin/AdminPlansPage'));
 
 const router = createBrowserRouter([
   {
     path: '/', element: <Layout />, children: [
       { index: true, element: <HomePage /> },
-      { path: 'search', element: <SearchResultsPage /> },
+      { path: 'search', element: <LegacySearchRedirect /> },
       { path: 'venues/:venueId', element: <VenueDetailPage /> },
       { path: 'venues/:venueId/slots', element: <ChooseSlotPage /> },
       {
@@ -75,8 +85,10 @@ const router = createBrowserRouter([
   },
   { path: 'auth/login', element: <LoginPage /> },
   { path: 'auth/register', element: <RegisterPage /> },
+  { path: 'auth/forgot-password', element: <ForgotPasswordPage /> },
   { path: 'owner/login', element: <OwnerLoginPage /> },
   { path: 'owner/register', element: <OwnerRegisterPage /> },
+  { path: 'owner/forgot-password', element: <OwnerForgotPasswordPage /> },
   { path: 'admin/login', element: <AdminLoginPage /> },
   {
     path: 'admin', element: <AdminProtectedRoute />, children: [{
@@ -84,6 +96,7 @@ const router = createBrowserRouter([
         { index: true, element: <AdminDashboardPage /> },
         { path: 'homepage', element: <AdminHomepagePage /> },
         { path: 'businesses', element: <AdminBusinessesPage /> },
+        { path: 'plans', element: <AdminPlansPage /> },
         { path: 'venues', element: <AdminVenuesPage /> },
         { path: 'customers', element: <AdminCustomersPage /> },
         { path: 'audit', element: <AdminAuditPage /> },
@@ -93,11 +106,18 @@ const router = createBrowserRouter([
   {
     path: 'owner', element: <OwnerProtectedRoute />, children: [{
       element: <OwnerLayout />, children: [
-        { index: true, element: <OwnerVenuesPage /> },
+        { index: true, element: <OwnerHomeRedirect /> },
+        { path: 'venues', element: <OwnerVenuesPage /> },
         { path: 'venues/new', element: <OwnerOnboardingPage /> },
+        { path: 'venues/:venueId/edit', element: <OwnerVenueEditPage /> },
         { path: 'venues/:venueId/courts', element: <OwnerCourtsPage /> },
         { path: 'venues/:venueId/calendar', element: <OwnerCalendarPage /> },
+        { path: 'venues/:venueId/booking-policy', element: <OwnerBookingPolicyPage /> },
         { path: 'earnings', element: <OwnerEarningsPage /> },
+        { path: 'reports/*', element: <OwnerReportsPage /> },
+        { path: 'team', element: <OwnerTeamPage /> },
+        { path: 'billing', element: <OwnerBillingPage /> },
+        { path: 'billing/return', element: <OwnerBillingReturnPage /> },
         { path: 'profile', element: <OwnerProfilePage /> },
       ],
     }],

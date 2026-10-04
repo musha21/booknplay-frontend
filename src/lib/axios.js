@@ -1,4 +1,5 @@
-﻿import axios from 'axios';
+import axios from 'axios';
+import { useAuthStore } from '../stores/authStore';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
 
@@ -9,9 +10,15 @@ const apiClient = axios.create({
 });
 
 const readAuth = () => {
-  // The standalone keys are updated immediately on login/refresh. Prefer them
-  // over the persisted Zustand snapshot, which can briefly contain an older
-  // customer's token after an account switch or token refresh.
+  const storeState = useAuthStore.getState();
+  if (storeState.accessToken || storeState.refreshToken) {
+    return {
+      accessToken: storeState.accessToken,
+      refreshToken: storeState.refreshToken,
+      role: storeState.role,
+    };
+  }
+
   const storedAccessToken = localStorage.getItem('accessToken');
   const storedRefreshToken = localStorage.getItem('refreshToken');
 
@@ -66,7 +73,7 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.skipAuthRefresh) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -84,8 +91,7 @@ apiClient.interceptors.response.use(
       const { refreshToken, role } = readAuth();
       if (!refreshToken) {
         isRefreshing = false;
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        useAuthStore.getState().logout();
         window.location.href = role === 'SUPER_ADMIN' ? '/admin/login' : role === 'BUSINESS_OWNER' || role === 'STAFF' ? '/owner/login' : '/auth/login';
         return Promise.reject(error);
       }
@@ -98,22 +104,10 @@ apiClient.interceptors.response.use(
         const newAccessToken = data.data.accessToken;
         const newRefreshToken = data.data.refreshToken;
 
-        localStorage.setItem('accessToken', newAccessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
-
-        try {
-          const raw = localStorage.getItem('booknplay-auth');
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed.state) {
-              parsed.state.accessToken = newAccessToken;
-              parsed.state.refreshToken = newRefreshToken;
-              localStorage.setItem('booknplay-auth', JSON.stringify(parsed));
-            }
-          }
-        } catch {
-          /* persist blob optional */
-        }
+        useAuthStore.getState().setTokens({
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        });
 
         apiClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -122,8 +116,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        useAuthStore.getState().logout();
         window.location.href = role === 'SUPER_ADMIN' ? '/admin/login' : role === 'BUSINESS_OWNER' || role === 'STAFF' ? '/owner/login' : '/auth/login';
         return Promise.reject(refreshError);
       } finally {

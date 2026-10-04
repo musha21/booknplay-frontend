@@ -2,13 +2,22 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 const persistTokens = (accessToken, refreshToken) => {
-  if (accessToken) localStorage.setItem('accessToken', accessToken);
-  if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+  if (accessToken) {
+    localStorage.setItem('accessToken', accessToken);
+  } else {
+    localStorage.removeItem('accessToken');
+  }
+  if (refreshToken) {
+    localStorage.setItem('refreshToken', refreshToken);
+  } else {
+    localStorage.removeItem('refreshToken');
+  }
 };
 
 const clearTokens = () => {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
+  localStorage.removeItem('booknplay-auth');
 };
 
 export const useAuthStore = create(
@@ -46,13 +55,20 @@ export const useAuthStore = create(
           refreshToken: null,
           isAuthenticated: false,
         });
+        try {
+          useAuthStore.persist?.clearStorage();
+        } catch {
+          localStorage.removeItem('booknplay-auth');
+        }
       },
 
       setTokens: (tokens) => {
-        persistTokens(tokens.accessToken, tokens.refreshToken);
+        const newAccessToken = tokens?.accessToken || get().accessToken;
+        const newRefreshToken = tokens?.refreshToken || get().refreshToken;
+        persistTokens(newAccessToken, newRefreshToken);
         set({
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken || get().refreshToken,
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
         });
       },
 
@@ -61,6 +77,8 @@ export const useAuthStore = create(
           user: { ...state.user, ...data },
           customer: state.customer ? { ...state.customer, ...data } : state.customer,
         })),
+
+      setOwner: (owner) => set({ owner }),
     }),
     {
       name: 'booknplay-auth',

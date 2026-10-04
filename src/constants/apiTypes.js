@@ -1,4 +1,4 @@
-﻿/**
+/**
  * BookNPlay API Constants & JSDoc type definitions
  * Mirrors the Spring Boot backend DTOs exactly.
  */
@@ -12,15 +12,18 @@ export const BookingStatus = /** @type {const} */ ({
   CANCELLED: 'CANCELLED',
   COMPLETED: 'COMPLETED',
   NO_SHOW:   'NO_SHOW',
+  FAILED:    'FAILED',
 });
 
 /** @readonly */
 export const PaymentStatus = /** @type {const} */ ({
-  PENDING:   'PENDING',
-  COMPLETED: 'COMPLETED',
-  FAILED:    'FAILED',
-  REFUNDED:  'REFUNDED',
-  PARTIAL:   'PARTIAL',
+  INITIATED:          'INITIATED',
+  PROCESSING:         'PROCESSING',
+  SUCCESS:            'SUCCESS',
+  FAILED:             'FAILED',
+  REFUNDED:           'REFUNDED',
+  PARTIALLY_REFUNDED: 'PARTIALLY_REFUNDED',
+  PAID:               'PAID',
 });
 
 /** @readonly */
@@ -32,10 +35,83 @@ export const CourtStatus = /** @type {const} */ ({
 
 /** @readonly */
 export const VenueStatus = /** @type {const} */ ({
-  ACTIVE:   'ACTIVE',
-  INACTIVE: 'INACTIVE',
-  PENDING:  'PENDING',
+  DRAFT:            'DRAFT',
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED:         'APPROVED',
+  ACTIVE:           'ACTIVE',
+  REJECTED:         'REJECTED',
+  SUSPENDED:        'SUSPENDED',
+  INACTIVE:         'INACTIVE',
+  DELETED:          'DELETED',
 });
+
+/**
+ * Backend availability derivation rule:
+ * An interval on a court is marked unavailable (available: false) if ANY of the following overlap:
+ * - CONFIRMED / COMPLETED booking -> 'BOOKED'
+ * - PENDING booking / active reservation hold -> 'HELD'
+ * - Owner operational block -> 'BLOCKED'
+ * - Scheduled maintenance window -> 'MAINTENANCE'
+ * - Outside operating hours -> 'CLOSED'
+ *
+ * Sibling courts in the same venue are strictly isolated; a block or booking on Court A
+ * never affects the availability of Court B.
+ *
+ * @readonly
+ */
+export const AvailabilitySlotReason = /** @type {const} */ ({
+  AVAILABLE:   'AVAILABLE',
+  BOOKED:      'BOOKED',
+  HELD:        'HELD',
+  BLOCKED:     'BLOCKED',
+  MAINTENANCE: 'MAINTENANCE',
+  CLOSED:      'CLOSED',
+});
+
+/**
+ * Business-owner platform subscription plan codes.
+ * TRIAL is auto-granted for 90 days on business registration.
+ * STARTER / GROWTH / PRO are paid catalog plans with admin-editable limits.
+ * @readonly
+ */
+export const PlanCode = /** @type {const} */ ({
+  TRIAL:   'TRIAL',
+  STARTER: 'STARTER',
+  GROWTH:  'GROWTH',
+  PRO:     'PRO',
+});
+
+/**
+ * API error code when a mutate is blocked by plan entitlements (HTTP 403).
+ * @readonly
+ */
+export const ApiErrorCode = /** @type {const} */ ({
+  PLAN_LIMIT: 'PLAN_LIMIT',
+});
+
+/**
+ * Business-owner platform subscription lifecycle.
+ * @readonly
+ */
+export const SubscriptionStatus = /** @type {const} */ ({
+  TRIALING:  'TRIALING',
+  ACTIVE:    'ACTIVE',
+  PAST_DUE:  'PAST_DUE',
+  EXPIRED:   'EXPIRED',
+  CANCELED:  'CANCELED',
+});
+
+/**
+ * Access reason surfaced by GET /owner/subscription.
+ * @readonly
+ */
+export const SubscriptionAccessReason = /** @type {const} */ ({
+  TRIAL_ACTIVE:  'TRIAL_ACTIVE',
+  TRIAL_ENDING:  'TRIAL_ENDING',
+  TRIAL_EXPIRED: 'TRIAL_EXPIRED',
+  SUBSCRIBED:    'SUBSCRIBED',
+});
+
 
 /* ── JSDoc Types (used as documentation; no runtime cost) ── */
 
@@ -70,6 +146,7 @@ export const VenueStatus = /** @type {const} */ ({
  * @property {string}     sportId
  * @property {string}     sportName
  * @property {string}     name
+ * @property {string}     [courtType] - Optional display label such as Court, Pitch, Table, or Lane
  * @property {number}     hourlyRate
  * @property {CourtStatus} status
  */
@@ -131,12 +208,44 @@ export const VenueStatus = /** @type {const} */ ({
  */
 
 /**
+ * @typedef {Object} SlotSelectionRequest
+ * @property {string} startTime - "HH:mm:ss"
+ * @property {string} endTime   - "HH:mm:ss"
+ */
+
+/**
  * @typedef {Object} BookingCreateRequest
  * @property {string} courtId
  * @property {string} sportId
  * @property {string} date        - "YYYY-MM-DD"
- * @property {string} startTime   - "HH:mm:ss"
- * @property {string} endTime     - "HH:mm:ss"
+ * @property {string} [startTime] - "HH:mm:ss" legacy continuous start
+ * @property {string} [endTime]   - "HH:mm:ss" legacy continuous end
+ * @property {SlotSelectionRequest[]} [slots] - discrete hours (gaps allowed)
+ */
+
+/**
+ * @typedef {Object} BookingQuoteResponse
+ * @property {number} totalAmount
+ * @property {number} payNow
+ * @property {number} balanceDue
+ * @property {'AT_VENUE'|'ONLINE_BEFORE_START'} balanceCollection
+ * @property {string} currency
+ * @property {boolean} cancellationAllowed
+ * @property {string|null} cancellationDeadline
+ * @property {string} afterDeadlineSummary
+ * @property {string} noShowSummary
+ * @property {number} policyVersion
+ */
+
+/**
+ * @typedef {Object} CancellationPreviewResponse
+ * @property {boolean} eligible
+ * @property {number} amountPaid
+ * @property {number} cancellationFee
+ * @property {number} refundAmount
+ * @property {string} refundMethod
+ * @property {string|null} deadline
+ * @property {string} message
  */
 
 /**
@@ -197,4 +306,77 @@ export const VenueStatus = /** @type {const} */ ({
  * @typedef {Object} CustomerLoginRequest
  * @property {string} email
  * @property {string} password
+ */
+
+/**
+ * @typedef {Object} SubscriptionAccess
+ * @property {boolean} canMutate
+ * @property {'TRIAL_ACTIVE'|'TRIAL_ENDING'|'TRIAL_EXPIRED'|'SUBSCRIBED'} reason
+ */
+
+/**
+ * @typedef {Object} PlanLimits
+ * @property {number|null} [maxVenues] null = unlimited
+ * @property {number|null} [maxCourtsPerVenue] null = unlimited
+ * @property {boolean} [calendarEnabled]
+ * @property {boolean} [walkInEnabled]
+ * @property {boolean} [earningsEnabled]
+ * @property {boolean} [reportsEnabled]
+ * @property {boolean} [advancedReportsEnabled]
+ */
+
+/**
+ * @typedef {Object} SubscriptionUsage
+ * @property {number} [venueCount]
+ */
+
+/**
+ * @typedef {Object} SubscriptionResponse
+ * @property {string} businessId
+ * @property {'TRIAL'|'STARTER'|'GROWTH'|'PRO'} planCode
+ * @property {'TRIALING'|'ACTIVE'|'PAST_DUE'|'EXPIRED'|'CANCELED'} status
+ * @property {string} [trialStartsAt]
+ * @property {string} [trialEndsAt]
+ * @property {string} [currentPeriodStart]
+ * @property {string} [currentPeriodEnd]
+ * @property {boolean} [cancelAtPeriodEnd]
+ * @property {number} [daysRemaining]
+ * @property {SubscriptionAccess} [access]
+ * @property {PlanLimits} [limits]
+ * @property {SubscriptionUsage} [usage]
+ */
+
+/**
+ * @typedef {Object} SubscriptionPlanResponse
+ * @property {'STARTER'|'GROWTH'|'PRO'|string} code
+ * @property {string} name
+ * @property {string} description
+ * @property {number} priceMonthly
+ * @property {number} [priceYearly]
+ * @property {string} currency
+ * @property {boolean} [highlighted]
+ * @property {string[]} [features]
+ * @property {number} [sortOrder]
+ * @property {boolean} [active]
+ * @property {number|null} [maxVenues]
+ * @property {number|null} [maxCourtsPerVenue]
+ * @property {boolean} [calendarEnabled]
+ * @property {boolean} [walkInEnabled]
+ * @property {boolean} [earningsEnabled]
+ * @property {boolean} [reportsEnabled]
+ * @property {boolean} [advancedReportsEnabled]
+ */
+
+/**
+ * @typedef {Object} SubscriptionCheckoutRequest
+ * @property {string} planCode
+ * @property {'MONTHLY'|'YEARLY'} billingInterval
+ */
+
+/**
+ * @typedef {Object} SubscriptionCheckoutResponse
+ * @property {string} paymentId
+ * @property {string} paymentUrl
+ * @property {PaymentStatus|string} status
+ * @property {string} [paymentGateway]
  */

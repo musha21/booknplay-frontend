@@ -6,12 +6,16 @@ export default function BusinessShowcase({ businesses, onViewBusiness }) {
   const reduced = useReducedMotion();
   if (!businesses.length) return null;
   return (
-    <section id="businesses" className="section-container py-20 sm:py-24">
-      <p className="eyebrow">Sports businesses</p>
-      <h2 className="section-title mt-2">Discover trusted sports businesses</h2>
-      <p className="section-subtitle">Explore businesses first, then choose the venue that works best for your game.</p>
+    <section id="businesses" className="section-container home-section">
+      <div className="home-section-heading">
+        <div>
+          <p className="eyebrow">Sports businesses</p>
+          <h2 className="section-title mt-2">Meet the people behind the places.</h2>
+          <p className="section-subtitle">Browse trusted local businesses, then choose where you want to play.</p>
+        </div>
+      </div>
       <motion.div
-        className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+        className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
         variants={reduced ? undefined : staggerContainer(0.08)}
         initial={reduced ? false : 'hidden'}
         whileInView={reduced ? undefined : 'show'}

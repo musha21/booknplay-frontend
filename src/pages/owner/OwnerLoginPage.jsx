@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Alert, Button, Container, IconButton, InputAdornment, Paper, TextField, Typography } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useOwnerLogin } from '../../hooks/useOwner';
-import BrandLogo from '../../components/ui/BrandLogo';
-import ThemeToggle from '../../components/ui/ThemeToggle';
-import LoginRoleSwitch from '../../components/auth/LoginRoleSwitch';
+import AuthAccessShell from '../../components/auth/AuthAccessShell';
 
 export default function OwnerLoginPage() {
   const [email, setEmail] = useState('');
@@ -13,43 +9,40 @@ export default function OwnerLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const loginMutation = useOwnerLogin();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = (event) => {
+    event.preventDefault();
     loginMutation.mutate({ email, password });
   };
 
   return (
-    <div className="min-h-screen bg-navy-900 flex items-center justify-center p-4 pt-24 relative">
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5 sm:px-8"><BrandLogo inverse /><ThemeToggle inverse /></div>
-      <Container maxWidth="xs">
-        <Paper className="p-8 !rounded-3xl">
-          <LoginRoleSwitch />
-          <Typography variant="h5" className="!font-bold !mb-1">Venue owner login</Typography>
-          <Typography variant="body2" className="!text-slate-500 !mb-6">
-            Manage courts, walk-ins, and earnings
-          </Typography>
-          {loginMutation.isError && (
-            <Alert severity="error" className="mb-4">
-              {loginMutation.error?.response?.data?.message || 'Login failed'}
-            </Alert>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <TextField fullWidth label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            <TextField fullWidth label="Password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required slotProps={{ input: { endAdornment: <InputAdornment position="end"><IconButton edge="end" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((visible) => !visible)}>{showPassword ? <VisibilityOff /> : <Visibility />}</IconButton></InputAdornment> } }} />
-            <Button type="submit" fullWidth variant="contained" disabled={loginMutation.isPending}>
-              {loginMutation.isPending ? 'Signing in…' : 'Sign in'}
-            </Button>
-          </form>
-          <Typography variant="body2" className="!mt-4 !text-center">
-            New partner? <Link to="/owner/register">Create an account</Link>
-          </Typography>
-          <div className="mt-6 border-t border-slate-200 pt-4 text-center">
-            <Link to="/admin/login" className="text-xs font-semibold text-slate-400 no-underline transition hover:text-slate-600">
-              Platform access
-            </Link>
+    <AuthAccessShell
+      role="owner"
+      mode="login"
+      kicker="BooknPlay for business"
+      title="Welcome back."
+      subtitle="Your courts, bookings, and players are waiting."
+      alternate={{ prompt: 'New to BooknPlay?', label: 'Create an account', to: '/owner/register' }}
+    >
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div className="auth-field">
+          <label htmlFor="email">Work email</label>
+          <input id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required />
+        </div>
+        <div className="auth-field">
+          <div className="auth-label-row">
+            <label htmlFor="password">Password</label>
+            <Link className="auth-link" to="/owner/forgot-password">Forgot password?</Link>
           </div>
-        </Paper>
-      </Container>
-    </div>
+          <div className="auth-password">
+            <input id="password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+            <button type="button" className="auth-show" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((visible) => !visible)}>{showPassword ? 'Hide' : 'Show'}</button>
+          </div>
+        </div>
+        {loginMutation.isError && <p className="auth-error" role="alert">{loginMutation.error?.response?.data?.message || 'Login failed'}</p>}
+        <button className="auth-primary" type="submit" disabled={loginMutation.isPending}>
+          {loginMutation.isPending ? 'Signing in…' : <>Sign in <span aria-hidden="true">↗</span></>}
+        </button>
+      </form>
+    </AuthAccessShell>
   );
 }

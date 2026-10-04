@@ -1,11 +1,11 @@
-# Design System: Booknplay.lk
-**Project ID:** Not applicable — this system is derived from the BookNPlay React application and the supplied dashboard reference.
+# Design System: Booknplay.lk Customer Experience
+**Project ID:** Live-reference derived — https://booknplay-home.platform416923.chatgpt.site
 
 ## 1. Visual Theme & Atmosphere
 
-Booknplay.lk feels energetic, trustworthy, direct, and distinctly sports-led. It pairs generous white space and clear booking controls with deep navy anchors and sharp lime signals. Customer screens are open and image-forward; owner screens are denser and operational without feeling administrative or cold.
+Booknplay.lk feels energetic, trustworthy, direct, and distinctly sports-led. It pairs generous white space and clear booking controls with deep teal-navy anchors and electric lime signals. Customer screens are open, editorial, image-forward, and deliberately compact without becoming dense.
 
-The interface should communicate “less planning, more playing.” Every screen prioritizes one obvious next action, short scannable copy, visible system status, and honest states. Photography comes only from venue data. When photography is unavailable, a navy sports illustration placeholder preserves the brand without implying a real venue image.
+The interface communicates “less planning, more playing.” Every screen prioritizes one obvious next action, short scannable copy, visible system status, and honest states. Photography comes only from venue data. When photography is unavailable, a navy sports illustration placeholder preserves the brand without implying a real venue image.
 
 Light and dark modes are equal first-class themes. Dark mode uses layered blue-black surfaces rather than pure black and preserves the lime accent without flooding the interface.
 
@@ -13,19 +13,19 @@ Light and dark modes are equal first-class themes. Dark mode uses layered blue-b
 
 ### Brand and interaction
 
-- **Midnight Court Navy (#061032):** Brand anchor, dark sections, primary text on lime, and the logo core.
-- **Action Navy (#152C6E):** Primary buttons, active navigation, links, and focus-supporting interaction color.
-- **Energy Lime (#A3E635):** Primary emphasis, selected states, promotional highlights, and customer-facing calls to action.
-- **Strong Lime (#84CC16):** Hover, pressed, and darker accent treatment.
-- **Soft Lime (#ECFCCB):** Tinted badges, onboarding selections, and calm promotional backgrounds.
+- **Deep Court Teal-Navy (#092636):** Customer brand anchor, hero and promotional panels, selected sport states, and primary text on lime.
+- **Action Navy (#152C6E):** Product-workflow primary buttons, active navigation, links, and focus-supporting interaction color.
+- **Electric Game Lime (#C7F84B):** Homepage conversion actions, highlighted words, selected states, and energetic customer emphasis.
+- **Strong Lime (#A3E635):** Hover, pressed, secondary accent, and shared product-action treatment.
+- **Soft Lime (#F4F7ED):** How-it-works panels, location cards, selected backgrounds, and calm promotional surfaces.
 
 ### Light theme
 
-- **Cloud Canvas (#F7F9FC):** Page background.
+- **Warm Cloud Canvas (#FBFCF8):** Customer page background.
 - **Pure Surface (#FFFFFF):** Cards, navigation, forms, and overlays.
-- **Ink Slate (#0F172A):** Primary text.
-- **Muted Slate (#64748B):** Supporting copy and metadata.
-- **Quiet Line (#E2E8F0):** Borders and separators.
+- **Deep Ink (#17252D):** Primary customer text.
+- **Muted Slate (#657178):** Supporting copy and metadata.
+- **Quiet Line (#E6E9E7):** Borders and separators.
 
 ### Dark theme
 
@@ -47,7 +47,7 @@ Never communicate a status by color alone; pair it with text, an icon, or both. 
 
 ## 3. Typography Rules
 
-Use **Inter** with system sans-serif fallback. Display headings use 800–900 weight, tight negative tracking, and compact line height. Page titles use 800 weight. Section titles and card titles use 750–800 weight. Body copy uses 400–500 weight with relaxed line height; controls use 700–800 weight.
+Use **Inter** with system sans-serif fallback. Display headings use 850–900 weight, tight negative tracking, and compact line height. Page titles use 850–900 weight. Section titles and card titles use 750–850 weight. Body copy uses 400–500 weight with relaxed line height; controls use 700–850 weight.
 
 - Marketing display: responsive 40–76px, line height 0.94–1.02.
 - Page title: 30–48px, line height 1.05–1.15.
@@ -60,11 +60,11 @@ Use sentence case for actions and headings. Keep labels concise and use Sri Lank
 
 ## 4. Component Stylings
 
-- **Brand mark:** A circular navy sports mark crossed by lime arcs, paired with a compact lowercase `booknplay.lk` wordmark.
+- **Brand mark:** A compact lime rounded-square `bp` mark paired with a lowercase `booknplay.lk` wordmark.
 - **Buttons:** Gently rounded 12px corners and a minimum 44px touch height. Primary actions use Action Navy; high-energy conversion actions use Energy Lime with navy text. Outlined actions use the semantic border.
-- **Cards and containers:** Confidently rounded 18px corners, a fine semantic border, and whisper-soft navy-tinted shadows in light mode or low black shadows in dark mode. Hover elevation is restrained.
+- **Cards and containers:** Marketing cards use restrained 8–12px corners; product workflow cards use confident 14–18px corners. Both use a fine semantic border and whisper-soft navy-tinted shadows. Hover elevation is restrained.
 - **Inputs and forms:** 12px corners, 50px standard height, always-visible labels, semantic surface fill, and a two-pixel focused outline. Errors sit beside the affected field.
-- **Navigation:** Customer navigation is a translucent 72px sticky bar. Owner navigation uses a persistent desktop rail and temporary mobile drawer. Active owner items use a lime fill with navy text.
+- **Navigation:** Customer navigation is a translucent 72–82px bar with the compact brand, centered discovery links, and a focused sign-in action. Non-home routes may expose the venue search without changing the visual language.
 - **Venue cards:** Use API photography at a stable aspect ratio, venue name, location, real returned price, and one clear detail/booking action. Never use unrelated stock imagery or invented availability.
 - **Badges:** Pill-shaped, compact, and paired with explicit text. Status badges follow the status palette.
 - **Dialogs:** 20px corners, focused titles, concise copy, clear primary and secondary actions, and trapped keyboard focus.
@@ -74,11 +74,9 @@ Use sentence case for actions and headings. Keep labels concise and use Sri Lank
 
 ## 5. Layout Principles
 
-Customer pages use a centered maximum width of 1280px with 16px mobile, 24px tablet, and 32px desktop gutters. Marketing sections use 56–80px vertical rhythm. Product workflows use 24–40px rhythm and keep the next action visible.
+Customer pages use a centered maximum width of 1280px with 16px mobile, 24px tablet, and 32px desktop gutters. Marketing sections use 52–88px vertical rhythm. Product workflows use 24–40px rhythm and keep the next action visible.
 
 The homepage flows from discovery to confidence: navigation, split hero, supported search, trust cues, sports, venue results, promotion, three booking steps, owner callout, and footer. Customer booking pages become progressively more focused and use sticky summaries only where they do not obscure mobile content.
-
-Owner screens prioritize operational density. Dashboards use metric cards and clear action groups; onboarding uses a visible step count, progress, inline validation, and a final review; calendars always provide status legends.
 
 At widths below 768px, columns stack, sidebars become scrollable tabs or drawers, tables scroll horizontally, and primary actions may expand to full width. At 1024px and above, customer detail pages may use supporting sidebars and owner navigation remains persistent.
 

@@ -10,8 +10,14 @@ import {
 
 export function venueCover(venue) {
   if (!venue) return '';
+  if (Array.isArray(venue.media) && venue.media.length) {
+    const ordered = [...venue.media].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    if (ordered[0]?.url) return ordered[0].url;
+  }
   if (venue.coverImageUrl) return venue.coverImageUrl;
-  if (Array.isArray(venue.images) && venue.images[0]) return venue.images[0];
+  if (Array.isArray(venue.images) && venue.images[0]) {
+    return typeof venue.images[0] === 'string' ? venue.images[0] : venue.images[0]?.url || '';
+  }
   return venue.businessImageUrl || venue.imageUrl || '';
 }
 
@@ -21,7 +27,16 @@ export function venuePrice(venue) {
 }
 
 export function venueSportLabel(venue) {
-  return venue?.sportName || venue?.venueType || venue?.sportType || 'Multi-sport venue';
+  if (!venue) return 'Multi-sport venue';
+  const courtSports = [...new Set(
+    (venue.courts || [])
+      .map((court) => court?.sportName || court?.sport?.name)
+      .filter(Boolean)
+      .map((name) => String(name).trim()),
+  )];
+  if (courtSports.length === 1) return courtSports[0];
+  if (courtSports.length > 1) return `${courtSports[0]} +${courtSports.length - 1}`;
+  return venue.sportName || venue.venueType || venue.sportType || 'Multi-sport venue';
 }
 
 export function sportAccent(name = '') {
@@ -45,3 +60,25 @@ export function sportIcon(name = '') {
   if (n.includes('swim')) return Pool;
   return SportsTennis;
 }
+
+export function venueDisplayAddress(venue) {
+  if (!venue) return '';
+  return venue.address || venue.formattedAddress || venue.city || 'Sri Lanka';
+}
+
+export function venueGoogleMapsUrl(venue) {
+  const lat = Number(venue?.latitude);
+  const lng = Number(venue?.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  }
+  const q = venueDisplayAddress(venue);
+  if (!q) return '';
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+}
+
+export function venueOperatorName(venue) {
+  if (!venue) return '';
+  return venue.businessName || venue.business?.name || '';
+}
+

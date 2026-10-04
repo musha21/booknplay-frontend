@@ -1,81 +1,66 @@
-import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search } from '@mui/icons-material';
+import { useMemo, useState } from 'react';
+import { LocationOn, Search } from '@mui/icons-material';
 import { useSports } from '../../hooks/useVenues';
-import { buildVenueSearchParams } from '../../utils/searchParams';
+import { KANDY_AREAS } from '../../constants/locations';
+import { MAIN_SPORT_FALLBACKS, curateMainSports } from '../../constants/sports';
 
-export default function NavSearchBar() {
-  const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const sports = useSports().data || [];
-  const [city, setCity] = useState(params.get('city') || '');
-  const [sportId, setSportId] = useState(params.get('sportId') || '');
-  const [name, setName] = useState(params.get('name') || '');
-  const [date, setDate] = useState(params.get('date') || '');
-  const [time, setTime] = useState(params.get('time') || '');
+export default function NavSearchBar({ initialFilters = {}, onSubmit }) {
+  const sportsQuery = useSports();
+  const sports = useMemo(() => sportsQuery.data || [], [sportsQuery.data]);
+  const [sportId, setSportId] = useState(initialFilters.sportId || '');
+  const [city, setCity] = useState(initialFilters.city || initialFilters.location || '');
+  const [date, setDate] = useState(initialFilters.date || '');
+  const [time, setTime] = useState(initialFilters.time || '');
   const today = new Date().toLocaleDateString('en-CA');
+  const heroSports = useMemo(() => {
+    const curated = curateMainSports(sports);
+    const missing = MAIN_SPORT_FALLBACKS.filter(
+      (fallback) => !curated.some((sport) => sport.displayName === fallback.displayName),
+    );
+    return [...curated, ...missing].slice(0, 10);
+  }, [sports]);
 
   const submit = (event) => {
     event.preventDefault();
-    navigate(`/search?${buildVenueSearchParams({ city, sportId, name, date, time })}`);
+    onSubmit?.({ sportId, city, date, time });
   };
 
   return (
-    <form onSubmit={submit} className="nav-search" role="search" aria-label="Find a venue">
-      <label className="nav-search-field">
-        <span className="nav-search-label">Where</span>
-        <input
-          value={city}
-          onChange={(event) => setCity(event.target.value)}
-          placeholder="City or area"
-          autoComplete="address-level2"
-        />
-      </label>
-      <span className="nav-search-split" aria-hidden="true" />
-      <label className="nav-search-field nav-search-field-compact">
-        <span className="nav-search-label">Date</span>
-        <input
-          type="date"
-          min={today}
-          value={date}
-          onChange={(event) => setDate(event.target.value)}
-          aria-label="Booking date"
-        />
-      </label>
-      <span className="nav-search-split" aria-hidden="true" />
-      <label className="nav-search-field nav-search-field-compact">
-        <span className="nav-search-label">Time</span>
-        <input
-          type="time"
-          step="1800"
-          value={time}
-          onChange={(event) => setTime(event.target.value)}
-          aria-label="Booking time"
-        />
-      </label>
-      <span className="nav-search-split" aria-hidden="true" />
-      <label className="nav-search-field">
-        <span className="nav-search-label">Sport</span>
-        <select value={sportId} onChange={(event) => setSportId(event.target.value)} aria-label="Sport">
-          <option value="">Choose sport</option>
-          {sports.map((sport) => (
-            <option key={sport.id} value={sport.id}>{sport.name}</option>
-          ))}
-        </select>
-      </label>
-      <span className="nav-search-split" aria-hidden="true" />
-      <label className="nav-search-field">
-        <span className="nav-search-label">Venue</span>
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Search by name"
-          autoComplete="off"
-        />
-      </label>
-      <button type="submit" className="nav-search-submit" aria-label="Search venues">
-        <Search />
-      </button>
-    </form>
+    <div className='hp-search-stack'>
+      <form onSubmit={submit} className='hp-search-bar' role='search' aria-label='Find a venue'>
+        <label className='hp-search-field'>
+          <span>Your sport</span>
+          <select value={sportId} onChange={(event) => setSportId(event.target.value)} aria-label='Sport'>
+            <option value=''>All sports</option>
+            {heroSports.map((sport) => <option key={sport.id} value={sport.id}>{sport.displayName || sport.name}</option>)}
+          </select>
+        </label>
+        <label className='hp-search-field'>
+          <span>Where</span>
+          <select value={city} onChange={(event) => setCity(event.target.value)} aria-label='Location'>
+            {KANDY_AREAS.map((area) => (
+              <option key={area.id} value={area.value}>
+                {area.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className='hp-search-field'>
+          <span>When</span>
+          <input type='date' min={today} value={date} onChange={(event) => setDate(event.target.value)} aria-label='Booking date' />
+        </label>
+        <label className='hp-search-field'>
+          <span>Time</span>
+          <input type='time' step='1800' value={time} onChange={(event) => setTime(event.target.value)} aria-label='Booking time' />
+        </label>
+        <button type='submit' className='hp-search-button'>
+          <Search /> Find a venue
+        </button>
+      </form>
+      <div className='hp-search-caption'>
+        <span className='hp-location-status'><LocationOn fontSize='small' /> Currently available across Kandy & surrounding towns</span>
+      </div>
+    </div>
   );
 }
+

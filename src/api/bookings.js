@@ -10,8 +10,17 @@
  * POST /customer/bookings
  * @param {import('../constants/apiTypes').BookingCreateRequest} data
  */
-export const createBooking = (data) =>
-  apiClient.post('/customer/bookings', data).then((r) => r.data);
+export const createBooking = ({ data, idempotencyKey }) =>
+  apiClient.post('/customer/bookings', data, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  }).then((r) => r.data);
+
+/**
+ * Calculate authoritative payment and cancellation terms for a booking request.
+ * POST /customer/bookings/quote
+ */
+export const quoteBooking = (data) =>
+  apiClient.post('/customer/bookings/quote', data).then((r) => r.data);
 
 /**
  * Get a booking by ID
@@ -52,3 +61,10 @@ export const getBookingHistory = (params = {}) =>
  */
 export const cancelBooking = (id) =>
   apiClient.post(`/customer/bookings/${id}/cancel`).then((r) => r.data);
+
+/**
+ * Preview the server-calculated cancellation fee and refund before confirmation.
+ * GET /customer/bookings/:id/cancellation-preview
+ */
+export const getCancellationPreview = (id) =>
+  apiClient.get(`/customer/bookings/${id}/cancellation-preview`).then((r) => r.data);

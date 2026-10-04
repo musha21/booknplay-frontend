@@ -1,20 +1,13 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
-export default function LoginRoleSwitch() {
+export default function LoginRoleSwitch({ mode = 'login' }) {
+  const location = useLocation();
+  const playerTo = mode === 'register' ? '/auth/register' : '/auth/login';
+  const ownerTo = mode === 'register' ? '/owner/register' : '/owner/login';
   return (
-    <div className="mb-7 grid grid-cols-2 rounded-2xl bg-slate-100 p-1" aria-label="Choose account type">
-      <NavLink
-        to="/auth/login"
-        className={({ isActive }) => `flex min-h-11 items-center justify-center rounded-xl px-3 text-sm font-extrabold no-underline transition ${isActive ? 'bg-white text-navy-900 shadow-sm' : 'text-slate-500 hover:text-navy-900'}`}
-      >
-        Customer
-      </NavLink>
-      <NavLink
-        to="/owner/login"
-        className={({ isActive }) => `flex min-h-11 items-center justify-center rounded-xl px-3 text-sm font-extrabold no-underline transition ${isActive ? 'bg-navy-900 text-white shadow-sm' : 'text-slate-500 hover:text-navy-900'}`}
-      >
-        Business owner
-      </NavLink>
-    </div>
+    <nav className="auth-roles" aria-label="Choose portal">
+      <NavLink to={playerTo} state={location.state} className={({ isActive }) => (isActive ? 'is-active' : undefined)}>Player</NavLink>
+      <NavLink to={ownerTo} className={({ isActive }) => (isActive ? 'is-active' : undefined)}>Business owner</NavLink>
+    </nav>
   );
 }

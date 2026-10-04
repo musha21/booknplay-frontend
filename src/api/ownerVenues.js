@@ -1,16 +1,35 @@
 import apiClient from '../lib/axios';
 
-export const listVenues = () => apiClient.get('/owner/venues');
+export const listVenues = (archived = false) =>
+  apiClient.get('/owner/venues', { params: { archived } });
 export const getVenue = (venueId) => apiClient.get(`/owner/venues/${venueId}`);
 export const createVenue = (data) => apiClient.post('/owner/venues', data);
 export const onboardVenue = (data) => apiClient.post('/owner/venues/onboard', data);
 export const updateVenue = (venueId, data) => apiClient.put(`/owner/venues/${venueId}`, data);
+export const submitVenue = (venueId) => apiClient.post(`/owner/venues/${venueId}/submit`);
+export const archiveVenue = (venueId) => apiClient.delete(`/owner/venues/${venueId}`);
+export const restoreVenue = (venueId) => apiClient.post(`/owner/venues/${venueId}/restore`);
 export const replaceImages = (venueId, imageUrls) =>
   apiClient.put(`/owner/venues/${venueId}/images`, { imageUrls });
+export const uploadVenueMedia = (venueId, files) => {
+  const form = new FormData();
+  (Array.isArray(files) ? files : [files]).forEach((file) => {
+    if (file) form.append('images', file);
+  });
+  return apiClient.post(`/owner/venues/${venueId}/media`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+export const reorderVenueMedia = (venueId, mediaIds) =>
+  apiClient.patch(`/owner/venues/${venueId}/media/order`, { mediaIds });
+export const deleteVenueMedia = (venueId, mediaId) =>
+  apiClient.delete(`/owner/venues/${venueId}/media/${mediaId}`);
 export const getOperatingHours = (venueId) =>
   apiClient.get(`/owner/venues/${venueId}/operating-hours`);
 export const replaceOperatingHours = (venueId, days) =>
   apiClient.put(`/owner/venues/${venueId}/operating-hours`, { days });
+export const getCancellationPolicy = () =>
+  apiClient.get('/owner/cancellation-policy');
 export const upsertCancellationPolicy = (venueId, data) =>
   apiClient.put(`/owner/venues/${venueId}/cancellation-policy`, data);
 
@@ -28,9 +47,16 @@ export const ownerVenuesApi = {
   createVenue,
   onboardVenue,
   updateVenue,
+  submitVenue,
+  archiveVenue,
+  restoreVenue,
   replaceImages,
+  uploadVenueMedia,
+  reorderVenueMedia,
+  deleteVenueMedia,
   getOperatingHours,
   replaceOperatingHours,
+  getCancellationPolicy,
   upsertCancellationPolicy,
   listCourts,
   createCourt,

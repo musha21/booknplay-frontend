@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Container, Paper, Chip, Button, Skeleton, Divider,
+  Chip, Button, Skeleton, Divider,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
 } from '@mui/material';
 import {
-  Download, Cancel, ArrowBack
+  Download, Cancel, ArrowBack, Refresh
 } from '@mui/icons-material';
 import {
-  useBookingDetail, useCancelBooking
+  useBookingDetail, useCancellationPreview, useCancelBooking
 } from '../hooks/useBookings';
 import {
   downloadInvoicePdf
 } from '../api/payments';
-import { formatTime } from '../utils/formatters';
+import { formatCurrency, formatTime } from '../utils/formatters';
+import { resourceLabelForCourt } from '../utils/courtResource';
+import { toast } from 'sonner';
 
 export default function BookingDetailPage() {
   const { bookingId } = useParams();
@@ -22,28 +24,38 @@ export default function BookingDetailPage() {
 
   const { data: bookingData, isLoading } = useBookingDetail(bookingId);
   const cancelMutation = useCancelBooking();
+  const previewQuery = useCancellationPreview(bookingId, { enabled: openCancelDialog });
 
   const booking = bookingData?.data;
+  const cancellationPreview = previewQuery.data?.data ?? previewQuery.data;
 
   if (isLoading) {
     return (
-      <Container maxWidth="md" className="py-12">
-        <Skeleton variant="rectangle" height={300} className="rounded-2xl" />
-      </Container>
+      <main className="page-shell py-12">
+        <div className="section-container !max-w-4xl">
+          <Skeleton variant="rounded" height={300} className="!bg-surface" />
+        </div>
+      </main>
     );
   }
 
 
   if (!booking) {
     return (
-      <Container maxWidth="md" className="py-20 text-center">
-        <h2 className="text-2xl font-bold text-navy-900 mb-4">Booking not found</h2>
-        <Button variant="outlined" startIcon={<ArrowBack />} onClick={() => navigate('/account/bookings')}>
-          Back to Bookings
-        </Button>
-      </Container>
+      <main className="page-shell py-20">
+        <div className="section-container">
+          <section className="customer-panel mx-auto max-w-xl p-8 text-center">
+            <h2 className="customer-page-title mb-3 !text-2xl">Booking not found</h2>
+            <p className="customer-body mb-6">This booking may no longer be available.</p>
+            <Button variant="outlined" startIcon={<ArrowBack />} onClick={() => navigate('/account/bookings')}>
+              Back to Bookings
+            </Button>
+          </section>
+        </div>
+      </main>
     );
   }
+  const resourceLabel = resourceLabelForCourt(booking);
 
   const handleCancel = () => {
     cancelMutation.mutate(bookingId, {
@@ -59,19 +71,21 @@ export default function BookingDetailPage() {
       a.href = url;
       a.download = `receipt-${booking.bookingRef || bookingId}.pdf`;
       a.click();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Receipt download failed', err);
+      toast.error(err?.response?.data?.message || 'Receipt download failed. Please try again.');
     }
   };
 
   return (
-    <div className="py-10 bg-slate-50 min-h-screen font-sans">
-      <Container maxWidth="md">
-        <Paper elevation={3} className="p-8 !rounded-3xl !bg-white mb-8">
+    <main className="page-shell py-10">
+      <div className="section-container !max-w-4xl">
+        <section className="customer-panel mb-8 p-6 sm:p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <span className="text-xs font-bold text-slate-400 uppercase">Booking Reference</span>
-              <h2 className="text-2xl font-extrabold text-navy-900">{booking.bookingRef || booking.id}</h2>
+              <span className="customer-step-label !text-xs uppercase">Booking Reference</span>
+              <h1 className="customer-page-title mt-1 !text-2xl">{booking.bookingRef || booking.id}</h1>
             </div>
             <Chip
               label={booking.status}
@@ -87,35 +101,35 @@ export default function BookingDetailPage() {
 
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div>
-              <span className="text-xs text-slate-400 block">Venue</span>
-              <span className="text-base font-bold text-navy-900">{booking.venueName}</span>
+              <span className="block text-xs text-muted">Venue</span>
+              <span className="text-base font-bold text-ink">{booking.venueName}</span>
             </div>
             <div>
-              <span className="text-xs text-slate-400 block">Court</span>
-              <span className="text-base font-bold text-navy-900">{booking.courtName}</span>
+              <span className="block text-xs text-muted">{resourceLabel}</span>
+              <span className="text-base font-bold text-ink">{booking.courtName}</span>
             </div>
             <div>
-              <span className="text-xs text-slate-400 block">Date</span>
-              <span className="text-base font-bold text-navy-900">{booking.date}</span>
+              <span className="block text-xs text-muted">Date</span>
+              <span className="text-base font-bold text-ink">{booking.date}</span>
             </div>
             <div>
-              <span className="text-xs text-slate-400 block">Time</span>
-              <span className="text-base font-bold text-navy-900">
+              <span className="block text-xs text-muted">Time</span>
+              <span className="text-base font-bold text-ink">
                 {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
               </span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Button
+            {booking.invoiceAvailable && <Button
               fullWidth
               variant="outlined"
               startIcon={<Download />}
               onClick={handleDownloadReceipt}
-              className="!border-navy-700 !text-navy-700 !font-bold !py-3 !rounded-xl"
+                className="!rounded-xl !border-navy-700 !py-3 !font-bold !text-navy-700"
             >
               Download Receipt
-            </Button>
+            </Button>}
             {booking.status === 'CONFIRMED' && (
               <Button
                 fullWidth
@@ -129,23 +143,63 @@ export default function BookingDetailPage() {
               </Button>
             )}
           </div>
-        </Paper>
-      </Container>
+        </section>
+      </div>
 
-      <Dialog open={openCancelDialog} onClose={() => setOpenCancelDialog(false)}>
-        <DialogTitle>Cancel Booking?</DialogTitle>
+      <Dialog
+        open={openCancelDialog}
+        onClose={() => setOpenCancelDialog(false)}
+        slotProps={{ paper: { className: '!rounded-[18px] !border !border-line !bg-surface' } }}
+      >
+        <DialogTitle className="customer-card-title">Cancel Booking?</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            Are you sure you want to cancel this booking? This action cannot be undone.
-          </DialogContentText>
+          {previewQuery.isLoading ? (
+            <DialogContentText className="customer-body">Calculating your cancellation terms…</DialogContentText>
+          ) : previewQuery.isError ? (
+            <div className="space-y-3">
+              <DialogContentText className="customer-body !text-red-600">
+                {previewQuery.error?.response?.data?.message || 'The cancellation terms could not be loaded.'}
+              </DialogContentText>
+              <Button startIcon={<Refresh />} onClick={() => previewQuery.refetch()}>Retry</Button>
+            </div>
+          ) : cancellationPreview ? (
+            <div className="space-y-4">
+              <DialogContentText className="customer-body">
+                {cancellationPreview.message
+                  || (cancellationPreview.eligible
+                    ? 'Review the refund details before cancelling. This action cannot be undone.'
+                    : 'Cancellation is only allowed within 1 hour of booking.')}
+              </DialogContentText>
+              {cancellationPreview.eligible ? (
+                <div className="rounded-2xl border border-line bg-canvas p-4 text-sm">
+                  <div className="flex justify-between gap-5 py-1"><span className="text-muted">Amount paid</span><strong>{formatCurrency(cancellationPreview.amountPaid)}</strong></div>
+                  <Divider className="!my-2" />
+                  <div className="flex justify-between gap-5 py-1"><span className="font-bold text-ink">Full refund</span><strong>{formatCurrency(cancellationPreview.refundAmount)}</strong></div>
+                  {cancellationPreview.refundMethod && <p className="mt-2 text-xs text-muted">Refund method: {cancellationPreview.refundMethod}</p>}
+                  {cancellationPreview.refundMode === 'PAYHERE' && Number(cancellationPreview.refundAmount) > 0 && (
+                    <p className="mt-2 text-xs text-muted">
+                      The full amount returns to the same payment method you used at checkout (via PayHere). Banks can take a few days to show it.
+                    </p>
+                  )}
+                  {Number(cancellationPreview.refundAmount) > 0 && cancellationPreview.refundMode !== 'PAYHERE' && (
+                    <p className="mt-2 text-xs text-muted">
+                      The full refund returns to the original payment method used for this booking.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </DialogContent>
-        <DialogActions>
+        <DialogActions className="!border-t !border-line !px-6 !py-4">
           <Button onClick={() => setOpenCancelDialog(false)}>No, Keep It</Button>
-          <Button onClick={handleCancel} color="error" disabled={cancelMutation.isPending}>
-            {cancelMutation.isPending ? 'Cancelling...' : 'Yes, Cancel'}
-          </Button>
+          {cancellationPreview?.eligible && (
+            <Button onClick={handleCancel} color="error" disabled={cancelMutation.isPending}>
+              {cancelMutation.isPending ? 'Cancelling...' : 'Confirm cancellation'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
-    </div>
+    </main>
   );
 }
