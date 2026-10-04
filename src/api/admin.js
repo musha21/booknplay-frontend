@@ -23,3 +23,11 @@ export const saveHomepageDraft = (payload) => data(apiClient.put('/admin/homepag
 export const publishHomepage = (reason) => data(apiClient.post('/admin/homepage/publish', null, { params: { reason } }));
 export const getHomepageVersions = () => data(apiClient.get('/admin/homepage/versions'));
 export const restoreHomepageVersion = (id, reason) => data(apiClient.post(`/admin/homepage/versions/${id}/restore`, null, { params: { reason } }));
+export const uploadPremiumSlideImage = (file) => {
+  const form = new FormData();
+  form.append('image', file);
+  // Let the browser set multipart boundary (do not force Content-Type).
+  return data(apiClient.post('/admin/homepage/slides/image', form, {
+    headers: { 'Content-Type': undefined },
+  }));
+};

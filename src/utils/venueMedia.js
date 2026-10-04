@@ -1,6 +1,6 @@
 import { mediaUrl } from './mediaUrl';
 
-/** Ordered gallery URLs for carousels: media → images → cover → business image. */
+/** Ordered gallery URLs for carousels: media → images → imageUrls → cover → business image. */
 export function venueMediaList(venue) {
   if (!venue) return [];
   const fromMedia = Array.isArray(venue.media)
@@ -15,6 +15,11 @@ export function venueMediaList(venue) {
     ? venue.images.map((item) => (typeof item === 'string' ? item : item?.url)).filter(Boolean)
     : [];
   if (fromImages.length) return fromImages.map((url) => mediaUrl(url) || url);
+
+  const fromImageUrls = Array.isArray(venue.imageUrls)
+    ? venue.imageUrls.map((item) => (typeof item === 'string' ? item : item?.url)).filter(Boolean)
+    : [];
+  if (fromImageUrls.length) return fromImageUrls.map((url) => mediaUrl(url) || url);
 
   const cover = venue.coverImageUrl || venue.businessImageUrl || venue.imageUrl;
   return cover ? [mediaUrl(cover) || cover] : [];

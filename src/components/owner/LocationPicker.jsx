@@ -11,7 +11,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const COLOMBO = { lat: 6.9271, lng: 79.8612 };
+const KANDY = { lat: 7.2906, lng: 80.6337 };
 
 const cityFromNominatim = (rev, formatted = '') => {
   const address = rev?.address || {};
@@ -61,8 +61,8 @@ export default function LocationPicker({ value, onChange }) {
   const [query, setQuery] = useState(value?.formattedAddress || '');
   const position = useMemo(
     () => ({
-      lat: value?.latitude ?? COLOMBO.lat,
-      lng: value?.longitude ?? COLOMBO.lng,
+      lat: value?.latitude ?? KANDY.lat,
+      lng: value?.longitude ?? KANDY.lng,
     }),
     [value]
   );

@@ -25,6 +25,15 @@ describe('venueMediaList', () => {
     ]);
     expect(venueMediaList({})).toEqual([]);
   });
+
+  it('uses imageUrls when media and images are empty', () => {
+    expect(venueMediaList({
+      imageUrls: ['https://cdn.example/1.jpg', 'https://cdn.example/2.jpg'],
+    })).toEqual([
+      'https://cdn.example/1.jpg',
+      'https://cdn.example/2.jpg',
+    ]);
+  });
 });
 
 describe('venueBusinessLogo', () => {

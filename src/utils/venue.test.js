@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sportAccent, sportIcon, venueDisplayAddress, venueGoogleMapsUrl, venueOperatorName } from './venue';
+import { sportAccent, sportIcon, venueDisplayAddress, venueGoogleMapsUrl, venueOperatorName, venueSportLabel } from './venue';
 import {
   Casino,
   Pool,
@@ -27,6 +27,20 @@ describe('sportIcon', () => {
     expect(sportIcon('Swimming Lane')).toBe(Pool);
     expect(sportIcon('Badminton')).toBe(SportsTennis);
     expect(sportIcon('Tennis')).toBe(SportsTennis);
+  });
+});
+
+describe('venueSportLabel', () => {
+  it('prefers unique court sport names over venue-level fallbacks', () => {
+    expect(venueSportLabel({
+      sportName: 'Multi',
+      courts: [{ sportName: 'Indoor Cricket' }, { sportName: 'Indoor Cricket' }],
+    })).toBe('Indoor Cricket');
+    expect(venueSportLabel({
+      courts: [{ sportName: 'Badminton' }, { sportName: 'Futsal' }],
+    })).toBe('Badminton +1');
+    expect(venueSportLabel({ sportName: 'Padel' })).toBe('Padel');
+    expect(venueSportLabel({})).toBe('Multi-sport venue');
   });
 });
 

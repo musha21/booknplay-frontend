@@ -10,7 +10,6 @@ export default function HeroBusinessSlide({ slide, homepage = {}, fallbackImage,
       }}
       image={slide.imageUrl || fallbackImage}
       imageAlt={slide.name || 'Sports venue'}
-      badge={slide.badge || (slide.name ? `${slide.name} is calling.` : undefined)}
       onExplore={slide?.businessId && onExplore ? () => onExplore(slide) : onSearch}
       searchFilters={searchFilters}
       onSearchSubmit={onSearchSubmit}

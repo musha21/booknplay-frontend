@@ -421,7 +421,7 @@ export default function ChooseSlotPage() {
             animate={reduced ? { opacity: 1 } : { y: 0, opacity: 1 }}
             exit={reduced ? { opacity: 0 } : { y: 32, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-            className="fixed inset-x-0 bottom-0 z-40 border-t border-navy-800 bg-navy-900 p-4 text-white shadow-2xl"
+            className="slot-checkout-bar fixed inset-x-0 bottom-0 z-40 border-t border-navy-800 bg-navy-900 p-4 text-white shadow-2xl"
           >
             <div className="section-container flex flex-col items-center justify-between gap-4 sm:flex-row">
               <div className="flex items-center gap-4">

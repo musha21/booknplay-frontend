@@ -5,19 +5,24 @@ import { useBusinesses, useHomepageConfig, useSports, useVenues } from '../hooks
 import BookingHeroFallback from '../components/home/BookingHeroFallback';
 import CityDestinationCard from '../components/home/CityDestinationCard';
 import VenueShowcase from '../components/home/VenueShowcase';
-import PremiumBusinessHero from '../components/home/PremiumBusinessHero';
+import MobileAppBanner from '../components/home/MobileAppBanner';
 import { SportCategoryGrid } from '../components/home/SportCategoryButton';
+import AccordionGallery from '../components/ui/AccordionGallery';
+import heroArena from '../assets/brand/midnight-multisport-arena.png';
+import { MAIN_SPORT_FALLBACKS, MAIN_SPORT_PRIORITY, curateMainSports } from '../constants/sports';
 import { buildVenueQuery, buildVenueSearchParams, LAUNCH_CITY } from '../utils/searchParams';
+import mediaUrl from '../utils/mediaUrl';
 import { venueCover, venueSportLabel } from '../utils/venue';
 
-const HOME_VENUE_SIZE = 24;
+const slideInWindow = (slide) => {
+  const today = new Date().toISOString().slice(0, 10);
+  if (slide?.startsAt && String(slide.startsAt).slice(0, 10) > today) return false;
+  if (slide?.expiresAt && String(slide.expiresAt).slice(0, 10) < today) return false;
+  return true;
+};
+
+const HOME_VENUE_SIZE = 48;
 const ALL_SPORTS = { id: '', name: 'All sports', displayName: 'All sports', all: true, fallback: true };
-const FALLBACK_SPORTS = ['Badminton', 'Indoor cricket', 'Futsal'].map((name) => ({ id: name.toLowerCase(), name, fallback: true }));
-const SPORT_PRIORITY = [
-  { label: 'Badminton', matches: ['badminton'] },
-  { label: 'Indoor cricket', matches: ['indoor cricket', 'cricket'] },
-  { label: 'Futsal', matches: ['futsal', 'football'] },
-];
 const FEATURED_CITIES = ['Kandy', 'Colombo', 'Negombo', 'Dehiwala', 'Kurunegala'];
 const DEFAULT_ORDER = ['sports', 'venues', 'cities', 'howItWorks', 'trust', 'ownerPromotion'];
 
@@ -29,12 +34,48 @@ const prioritizedSelection = (items, ids = []) => {
   return [...featured, ...items.filter((item) => !featuredIds.has(String(item.id)))];
 };
 
-const venueMatchesSport = (venue, sport) =>
-  !sport ||
-  sport.all ||
-  [venue.sportId, venue.sport?.id].some((id) => String(id) === String(sport.id)) ||
-  String(venueSportLabel(venue)).toLowerCase().includes(sport.name.toLowerCase()) ||
-  venue.courts?.some((court) => String(court.sportName || court.sport?.name || '').toLowerCase().includes(sport.name.toLowerCase()));
+const resolveSportPriority = (sport) => {
+  const names = [sport?.displayName, sport?.name].filter(Boolean).map((value) => String(value).toLowerCase());
+  return MAIN_SPORT_PRIORITY.find(({ label, matches }) => (
+    names.includes(label.toLowerCase())
+    || matches.some((term) => names.some((name) => name.includes(term)))
+  ));
+};
+
+const sportNameTerms = (sport) => {
+  const names = [sport?.displayName, sport?.name].filter(Boolean).map((value) => String(value).toLowerCase());
+  const priority = resolveSportPriority(sport);
+  return [...new Set([...names, ...(priority?.matches || [])])];
+};
+
+const textMatchesSport = (raw, sport) => {
+  const text = String(raw || '').toLowerCase().trim();
+  if (!text || text === 'multi-sport venue') return false;
+  const priority = resolveSportPriority(sport);
+  const label = String(sport?.displayName || sport?.name || '').toLowerCase();
+  if (label === '8-ball pool' || priority?.label === '8-Ball Pool') {
+    return (text.includes('8-ball') || text.includes('billiard') || text.includes('pool'))
+      && !text.includes('swim');
+  }
+  if (label === 'swimming' || priority?.label === 'Swimming') {
+    return text.includes('swim') || (text.includes('lane') && !text.includes('pool table'));
+  }
+  const terms = sportNameTerms(sport);
+  return terms.some((term) => term && text.includes(term));
+};
+
+const venueMatchesSport = (venue, sport) => {
+  if (!sport || sport.all) return true;
+  const sportKey = String(sport.id || '');
+  if (sportKey && [venue.sportId, venue.sport?.id].some((id) => id != null && String(id) === sportKey)) return true;
+  if (sportKey && venue.courts?.some((court) => [court.sportId, court.sport?.id].some((id) => id != null && String(id) === sportKey))) {
+    return true;
+  }
+  if (textMatchesSport(venue.sportName, sport) || textMatchesSport(venueSportLabel(venue), sport)) return true;
+  if (venue.courts?.some((court) => textMatchesSport(court.sportName || court.sport?.name, sport))) return true;
+  // No usable sport metadata while a sport is selected → exclude (filter must narrow results).
+  return false;
+};
 
 const venueMatchesLocation = (venue, targetLocation) => {
   if (!targetLocation || targetLocation === LAUNCH_CITY) return true;
@@ -43,13 +84,6 @@ const venueMatchesLocation = (venue, targetLocation) => {
   const address = String(venue.address || venue.formattedAddress || '').toLowerCase();
   return city.includes(query) || address.includes(query);
 };
-
-const curateSports = (items) => SPORT_PRIORITY.map(({ label, matches }) => {
-  const preferredNames = [label, `${label} Court`, `${label} Field`, `${label} Pool`].map((name) => name.toLowerCase());
-  const exact = items.find((sport) => preferredNames.includes(String(sport.name).toLowerCase()));
-  const match = exact || items.find((sport) => matches.some((term) => String(sport.name).toLowerCase().includes(term)));
-  return match ? { ...match, displayName: label } : null;
-}).filter(Boolean);
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -60,9 +94,20 @@ export default function HomePage() {
   const date = urlParams.get('date') || '';
   const time = urlParams.get('time') || '';
   const [businessId, setBusinessId] = useState('');
+  const [premiumTrigger, setPremiumTrigger] = useState('hover');
   const sportsQuery = useSports();
   useBusinesses();
-  const venueParams = useMemo(() => buildVenueQuery({ city, date, time, size: HOME_VENUE_SIZE }), [city, date, time]);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 800px)');
+    const sync = () => setPremiumTrigger(media.matches ? 'click' : 'hover');
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
+  const venueParams = useMemo(
+    () => buildVenueQuery({ city, date, time, size: HOME_VENUE_SIZE }),
+    [city, date, time],
+  );
   const venuesQuery = useVenues(venueParams);
   const homepageQuery = useHomepageConfig();
   const homepage = homepageQuery.data || {};
@@ -79,15 +124,24 @@ export default function HomePage() {
   const venues = useMemo(() => venuesQuery.data || [], [venuesQuery.data]);
 
   const displaySports = useMemo(() => {
-    const source = sports.length ? sports : FALLBACK_SPORTS;
+    const source = sports.length ? sports : MAIN_SPORT_FALLBACKS;
     const featured = orderedSelection(source, homepage.featuredSportIds);
-    const curated = curateSports(featured);
-    const selected = curated.length === SPORT_PRIORITY.length ? curated : curateSports(source);
-    const missing = FALLBACK_SPORTS.filter((fallback) => !selected.some((sport) => sport.displayName === fallback.name));
-    return [ALL_SPORTS, ...selected, ...missing].slice(0, 4);
+    const curated = curateMainSports(featured);
+    const selected = curated.length === MAIN_SPORT_PRIORITY.length ? curated : curateMainSports(source);
+    const missing = MAIN_SPORT_FALLBACKS.filter(
+      (fallback) => !selected.some((sport) => sport.displayName === fallback.displayName),
+    );
+    return [ALL_SPORTS, ...selected, ...missing].slice(0, 11);
   }, [sports, homepage.featuredSportIds]);
 
-  const selectedSport = displaySports.find((sport) => String(sport.id) === String(sportId));
+  const selectedSport = useMemo(() => {
+    if (!sportId) return ALL_SPORTS;
+    const matched = sports.find((sport) => String(sport.id) === String(sportId))
+      || displaySports.find((sport) => String(sport.id) === String(sportId));
+    if (!matched) return ALL_SPORTS;
+    const curated = displaySports.find((sport) => String(sport.id) === String(matched.id));
+    return curated ? { ...matched, displayName: curated.displayName || matched.name } : matched;
+  }, [sportId, sports, displaySports]);
 
   const cityCards = useMemo(() => {
     const grouped = new Map();
@@ -104,8 +158,20 @@ export default function HomePage() {
     return [...featured, ...additional].slice(0, 5);
   }, [venues]);
 
-  const premiumSlides = homepage.premiumSliderEnabled === false ? [] : (homepage.premiumSlides || []);
-  const heroCover = venues.map(venueCover).find(Boolean) || '';
+  const premiumSlides = useMemo(() => {
+    if (homepage.premiumSliderEnabled === false) return [];
+    return (homepage.premiumSlides || []).filter((slide) => slide.enabled !== false && slideInWindow(slide));
+  }, [homepage.premiumSliderEnabled, homepage.premiumSlides]);
+
+  const premiumAccordionItems = useMemo(
+    () => premiumSlides.map((slide) => ({
+      image: mediaUrl(slide.imageUrl) || heroArena,
+      label: slide.headline || slide.badge || 'Premium court',
+      alt: slide.headline || 'Premium court',
+      businessId: slide.businessId,
+    })),
+    [premiumSlides],
+  );
 
   const matchingVenues = useMemo(() => {
     return venues
@@ -157,9 +223,7 @@ export default function HomePage() {
 
   return (
     <div className="home-page">
-      {premiumSlides.length > 0
-        ? <PremiumBusinessHero homepage={homepage} slides={premiumSlides} fallbackImage={heroCover} onExplore={showBusinessVenues} onSearch={findVenue} searchFilters={searchFilters} onSearchSubmit={applySearch} />
-        : <BookingHeroFallback homepage={homepage} cover={heroCover} onSearch={findVenue} searchFilters={searchFilters} onSearchSubmit={applySearch} />}
+      <BookingHeroFallback homepage={homepage} cover={heroArena} onSearch={findVenue} searchFilters={searchFilters} onSearchSubmit={applySearch} />
 
       {homepage.showSports !== false && (
         <section id="sports" className="hp-section" style={{ order: orderOf('sports') }}>
@@ -179,18 +243,47 @@ export default function HomePage() {
         </section>
       )}
 
+      {premiumAccordionItems.length > 0 && (
+        <section id="premium-courts" className="hp-section" style={{ order: orderOf('sports') }} aria-label="Premium courts">
+          <div className="hp-section-head">
+            <div>
+              <p className="hp-kicker">Featured partners</p>
+              <h2>Premium courts</h2>
+            </div>
+            <p className="hp-section-note">Expand a panel, then tap again to explore their venues.</p>
+          </div>
+          <AccordionGallery
+            items={premiumAccordionItems}
+            accentColor="#C7F84B"
+            overlayColor="#061032"
+            textColor="#ffffff"
+            grayscale
+            trigger={premiumTrigger}
+            height={420}
+            defaultIndex={0}
+            onItemActivate={(item) => {
+              if (item?.businessId) showBusinessVenues({ businessId: item.businessId });
+            }}
+          />
+        </section>
+      )}
+
       {homepage.showVenues !== false && (
         <div style={{ order: orderOf('venues') }}>
           <VenueShowcase
             venues={displayedVenues}
             city={city}
-            loading={venuesQuery.isLoading}
+            loading={venuesQuery.isPending || (venuesQuery.isFetching && displayedVenues.length === 0)}
             error={venuesQuery.isError}
             onRetry={() => venuesQuery.refetch()}
             onClear={clearFilters}
           />
         </div>
       )}
+
+      <section className="hp-section hp-app-banner-section" style={{ order: orderOf('venues') }} aria-label="Booknplay mobile app">
+        <MobileAppBanner />
+      </section>
 
       {homepage.showCities !== false && cityCards.length > 0 && (
         <section className="hp-section" style={{ order: orderOf('cities') }}>

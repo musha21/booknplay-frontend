@@ -1,17 +1,37 @@
 import { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Search } from '@mui/icons-material';
 import { Skeleton } from '@mui/material';
 import { motion, useReducedMotion } from 'motion/react';
+import { toast } from 'sonner';
 import EmptyState from '../ui/EmptyState';
 import VenueCard from '../ui/VenueCard';
+import useAuthStore from '../../stores/authStore';
 import { staggerContainer } from '../../motion/variants';
 
 export default function VenueShowcase({ venues = [], loading, error, onRetry, onClear, city = 'Kandy' }) {
   const reduced = useReducedMotion();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isCustomer = useAuthStore((state) => state.isAuthenticated && state.role === 'CUSTOMER');
   const [savedIds, setSavedIds] = useState([]);
   const [savedOnly, setSavedOnly] = useState(false);
-  const toggleSaved = (venueId) => setSavedIds((current) => current.includes(venueId) ? current.filter((id) => id !== venueId) : [...current, venueId]);
-  const visible = useMemo(() => savedOnly ? venues.filter((venue) => savedIds.includes(venue.id)) : venues, [venues, savedOnly, savedIds]);
+
+  const toggleSaved = (venueId) => {
+    if (!isCustomer) {
+      toast.info('Sign in to save venues');
+      navigate('/auth/login', { state: { from: location, reason: 'favourite' } });
+      return;
+    }
+    setSavedIds((current) => (
+      current.includes(venueId) ? current.filter((id) => id !== venueId) : [...current, venueId]
+    ));
+  };
+
+  const visible = useMemo(
+    () => (savedOnly ? venues.filter((venue) => savedIds.includes(venue.id)) : venues),
+    [venues, savedOnly, savedIds],
+  );
 
   const displayCity = city || 'Kandy';
 
@@ -32,7 +52,7 @@ export default function VenueShowcase({ venues = [], loading, error, onRetry, on
           Saved ({savedIds.length})
         </button>
       </div>
-      {loading ? <div className="hp-venue-grid">{[1, 2, 3, 4].map((item) => <Skeleton key={item} variant="rounded" height={320} />)}</div>
+      {loading ? <div className="hp-venue-grid">{[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} variant="rounded" height={320} />)}</div>
         : error ? <EmptyState icon={Search} title="Could not load venues" description="The venue list is unavailable right now." actionLabel="Retry" onAction={onRetry} />
           : !visible.length ? (
             <EmptyState
@@ -49,7 +69,7 @@ export default function VenueShowcase({ venues = [], loading, error, onRetry, on
               onAction={savedOnly ? () => setSavedOnly(false) : onClear}
             />
           ) : (
-            <motion.div className="hp-venue-grid" variants={reduced ? undefined : staggerContainer(0.07)} initial={reduced ? false : 'hidden'} whileInView={reduced ? undefined : 'show'} viewport={{ once: true }}>
+            <motion.div className="hp-venue-grid" variants={reduced ? undefined : staggerContainer(0.07)} initial={reduced ? false : 'hidden'} animate={reduced ? undefined : 'show'}>
               {visible.map((venue) => (
                 <VenueCard
                   key={venue.id}

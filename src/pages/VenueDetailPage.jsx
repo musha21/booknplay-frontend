@@ -12,7 +12,7 @@ export default function VenueDetailPage() {
   const navigate = useNavigate();
   const query = useVenue(venueId);
   const venue = query.data;
-  if (query.isLoading) return <main className="page-shell"><div className="section-container space-y-5 py-10"><Skeleton variant="rounded" className="mx-auto !aspect-[16/9] !h-auto !max-h-[28rem] w-full !max-w-[min(100%,calc(28rem*16/9))] !bg-surface sm:!max-h-[32rem] sm:!max-w-[min(100%,calc(32rem*16/9))]" /><Skeleton width="40%" height={50} className="!bg-surface" /></div></main>;
+  if (query.isLoading) return <main className="page-shell"><div className="section-container space-y-5 py-10"><Skeleton variant="rounded" className="!h-[min(56vw,36rem)] !min-h-[220px] w-full !bg-surface" /><Skeleton width="40%" height={50} className="!bg-surface" /></div></main>;
   if (!venue) return <main className="page-shell"><div className="section-container py-16"><EmptyState icon={SportsTennis} title="Venue not found" description="This venue may no longer be listed." actionLabel="Browse venues" onAction={() => navigate('/#venues')} /></div></main>;
 
   const address = venueDisplayAddress(venue);
@@ -28,15 +28,16 @@ export default function VenueDetailPage() {
   return (
     <main className="page-shell py-8 sm:py-12"><div className="section-container">
       <button onClick={() => navigate(-1)} className="mb-5 inline-flex items-center gap-2 text-sm font-bold text-muted hover:text-ink"><ArrowBack fontSize="small" /> Back</button>
-      <section className="relative mx-auto aspect-[16/9] w-full max-h-[28rem] max-w-[min(100%,calc(28rem*16/9))] overflow-hidden rounded-[28px] bg-navy-900 shadow-2xl sm:max-h-[32rem] sm:max-w-[min(100%,calc(32rem*16/9))]">
+      <section className="relative h-[min(56vw,36rem)] min-h-[220px] w-full overflow-hidden rounded-[28px] bg-navy-900 shadow-2xl">
         <VenueCarousel
           venue={venue}
-          className="absolute inset-0"
-          imageClassName="h-full w-full object-cover opacity-90"
+          className="absolute inset-0 z-0"
+          imageClassName="h-full w-full object-cover"
           alt={venue.name}
+          showLogo={false}
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-navy-900 via-navy-900/20 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-9">
+        <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-navy-900 via-navy-900/35 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 z-[2] p-6 text-white sm:p-9">
           <Chip label={venue.city || 'Sri Lanka'} color="secondary" />
           <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-5xl">{venue.name}</h1>
           {mapsUrl ? (
@@ -71,12 +72,12 @@ export default function VenueDetailPage() {
                       </div>
                       <SpaceIcon className="text-lime-600" />
                     </div>
-                    <div className="mt-5 flex items-end justify-between border-t border-line pt-4">
+                    <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-end sm:justify-between">
                       <div>
                         <span className="block text-xs text-muted">Hourly rate</span>
                         <strong className="text-ink">LKR {Number(court.hourlyRate || court.price || 0).toLocaleString()}</strong>
                       </div>
-                      <Button variant="contained" endIcon={<ArrowForward />} onClick={() => navigate(`/venues/${venue.id}/slots?courtId=${court.id}`)}>Choose slots</Button>
+                      <Button className="w-full sm:w-auto" variant="contained" endIcon={<ArrowForward />} onClick={() => navigate(`/venues/${venue.id}/slots?courtId=${court.id}`)}>Choose slots</Button>
                     </div>
                   </article>
                 );

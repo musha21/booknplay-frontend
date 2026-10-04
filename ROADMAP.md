@@ -1,6 +1,6 @@
 # BooknPlay Development Roadmap
 
-Last updated: 2026-09-27
+Last updated: 2026-10-03
 
 This roadmap is the technical execution plan for the BooknPlay frontend in this repository. The Spring Boot API lives beside it at `C:\Users\Musharaf\Downloads\booknplay\booknplay`. On 2026-09-24, the production build and all 34 automated tests passed. Changed-file lint passes; the full lint command is blocked only by the existing Fast Refresh export error in `src/components/auth/SportsEquipment.jsx`. The Vitest setup currently fails before tests run (`afterEach` in `src/test/setup.js`).
 
@@ -17,13 +17,13 @@ This repository is the React frontend only. It expects the Spring Boot API at `V
 | Customer discovery and booking UI     | In progress | Home, venue detail, slot selection, server-quote checkout, and cancellation-preview UI exist. Search is locked to Kandy. Quote returns `quoteId` and pay-now is still the full slot total. Confirm sends that `quoteId` plus contact details. Dummy confirm copies the current business cancellation fields onto the booking. |
 | Customer authentication and account   | In progress | Login, registration, protected account routes, bookings, profile, privacy, and help exist. Favourites stays an empty state because no favourites API exists. Customer and owner password-reset screens exist. |
 | Payment frontend                      | In progress | Local checkout uses dummy mode. Quote and confirm require `booknplay.payments.mode=DUMMY` and `booknplay.payments.dummy-enabled=true`; those are the API defaults. Confirm records a `DUMMY` payment as `SUCCESS` and does not call a gateway. A real sandbox gateway is still open. |
-| Venue owner portal                    | In progress | Calendar is the `/owner` home for live venues; Overview is Venues; collapsible side nav; bookable-spaces rename + how-it-works; simplified walk-ins; Team page with custom staff permissions + `maxStaff` plan seats; Reports analytics hub (ApexCharts + sub-nav); Billing usage meters (venues/staff). Auth, onboarding, booking-policy, pricing, maintenance, earnings, payouts, profile, trial→paid plans, and plan-driven commission (trial 0%) remain. Cancel policy saves `hoursBeforeDeadline: 1` and `refundPercentage: 100` (or `{0,0}` when off). Policy is per business, not per venue. |
+| Venue owner portal                    | In progress | Calendar is the `/owner` home for live venues; Overview is Venues; collapsible side nav; bookable-spaces rename + how-it-works; walk-ins are guest-only (`WALK_IN`, null `customer_id`, no `payments` row; `paymentStatus` may be null); Team page with custom staff permissions + `maxStaff` plan seats; Reports analytics hub (ApexCharts + sub-nav); Billing usage meters (venues/staff). Auth, onboarding, booking-policy, pricing, maintenance, earnings, payouts, profile, trial→paid plans, and plan-driven commission (trial 0%) remain. Cancel policy saves `hoursBeforeDeadline: 1` and `refundPercentage: 100` (or `{0,0}` when off). Policy is per business, not per venue. |
 | Admin portal                          | In progress | Auth, dashboard, businesses, venues, customers, audit, and homepage publishing exist. Permission enforcement is client-side only.                                                                                |
 | Production build                      | Complete    | `npm run build` succeeded as of 2026-09-24.                                                                                                                                                                      |
 | Linting                               | In progress | Changed-file lint passes. Full lint has one existing `react-refresh/only-export-components` error in `SportsEquipment.jsx`.                                                                                      |
 | Automated tests                       | In progress | All 34 tests pass. Normalize the slower Windows runner configuration in CI. Checkout quotes and booking-policy calculations now have regression coverage.                                                        |
 | PWA                                   | Planned     | `public/manifest.webmanifest` and `vite-plugin-pwa` exist. `vite.config.js` does not register the plugin.                                                                                                        |
-| Backend, database, and deployment     | In progress | Sibling repo `C:\Users\Musharaf\Downloads\booknplay\booknplay`. Quote, dummy confirm, cancellation preview, and policy-based cancel are implemented. A versioned per-venue policy, gateway refunds, and deployment are still open. |
+| Backend, database, and deployment     | In progress | Sibling repo `C:\Users\Musharaf\Downloads\booknplay\booknplay`. Quote, confirm, cancellation preview, and policy-based cancel are implemented. Walk-in create (`createWalkIn`) saves the booking only (no payment row); owner cancel of `WALK_IN` skips PayHere; online PayHere create unchanged. A versioned per-venue policy, broader gateway refunds, and deployment are still open. |
 
 
 ### Status legend
@@ -131,7 +131,12 @@ Business and venue are separate.
 
 Home or venue card → venue detail → slot page → login when the user is not a customer → checkout → `POST /customer/bookings` → `POST /customer/payments/initiate/:bookingId` → gateway URL or `/payment/return` polling.
 
-Owner walk-ins use `POST /owner/bookings/walk-in`. The client intends one booking family. Conflict detection, holds, and idempotency are backend responsibilities and are unverified.
+Owner walk-ins use `POST /owner/bookings/walk-in`. Verified sibling-API contract:
+
+- `BookingSource.WALK_IN`, `customer_id` null, `guestName` / `guestPhone` (mirrored to `contactName` / `contactPhone`), status `CONFIRMED`.
+- No `payments` row is inserted; response `paymentStatus` may be null. Cash/offline settlement stays with the venue.
+- Online customer bookings still set `customer_id` and create a PayHere `Payment`.
+- Overlap and conflict rejection share the same backend rules as customer create (see Phase 8). Owner status/cancel must tolerate a missing Customer and Payment.
 
 ## Completed Features
 
@@ -154,6 +159,7 @@ Frontend UI and clients below exist. They are not certified against a live backe
 - [x] Interim checkout policy guard removes the unsupported deposit choice and universal refund promise.
 - [x] Role-specific logout revokes the refresh token, then clears both token stores.
 - [x] Checkout quote and cancellation preview are served by the Spring Boot booking API. Cancel uses the same policy calculation.
+- [x] Owner walk-in create persists a guest booking only (no PayHere/cash `payments` row). Owner cancel of walk-ins uses refund `NONE` and does not require Customer or Payment.
 
 ## In Progress
 
@@ -174,13 +180,13 @@ Frontend UI and clients below exist. They are not certified against a live backe
 - Customer password length check is 6 characters in `src/pages/auth/RegisterPage.jsx`.
 - Help copy names PayHere while `.env.example` sets `VITE_PAYMENT_GATEWAY=DUMMY`.
 - Access and refresh tokens live in `localStorage` under `accessToken`, `refreshToken`, and `booknplay-auth`. One pair is shared by all roles.
-- Tenant isolation and double-booking protection cannot be confirmed in this repository.
+- Tenant isolation cannot be proven from this frontend repository alone. Double-booking overlap for customer create and walk-in is covered by sibling-API tests (`BookingOverlapRepositoryTest`); the client still treats the server as authority.
 
 ## Technical Debt
 
 - Duplicate customer login hooks: `useAuth` and `useLogin` / `useRegister` in `src/hooks/useAuth.js`.
 - Large mixed pages: `src/pages/owner/OwnerOnboardingPage.jsx`, `src/pages/CheckoutPage.jsx`, `src/index.css`.
-- Owner navigation exposes Overview, Calendar, Earnings, and Profile. Courts are reached from the venue card.
+- Owner nav is denser than early debt notes: Calendar is the `/owner` home for live venues; Overview is Venues; Team, Reports, and Billing sit alongside Earnings and Profile. Courts / bookable spaces remain venue-scoped.
 - Customer UI says “court” even when onboarding named a pitch, table, or lane.
 - `vite-plugin-pwa` is installed and unused.
 - React Hook Form is installed and mostly unused.
@@ -440,6 +446,18 @@ Availability is derived on the server. The client only renders slots.
     - Two overlapping confirms for the same court are rejected by the server.
     - A walk-in for an occupied slot returns the same class of conflict as a customer booking.
     - Automated backend tests cover the overlap. Frontend tests can cover payload shaping only.
+
+- [x] Separate ONLINE and WALK_IN booking contracts (no walk-in Payment row)
+  - Completed: 2026-10-03 (sibling Spring Boot).
+  - Priority: Critical
+  - Area: Backend / Database
+  - Dependencies: Backend repository. Frontend walk-in client already posts guest name/phone.
+  - Relevant files: sibling `OwnerCalendarServiceImpl`, `BookingServiceImpl`, `PaymentServiceImpl`; frontend `src/api/ownerCalendar.js`, `src/pages/owner/OwnerCalendarPage.jsx`
+  - Implementation notes: `createWalkIn` saves `BookingSource.WALK_IN` with null customer, guest/contact fields, `CONFIRMED`, and priced `BookingSlot`s — it does **not** call `paymentRepository.save`. Response `paymentStatus` is null. Owner cancel uses `cancelBookingAsOwner` with walk-in branch (`refundMode` `NONE`, no PayHere). `PaymentServiceImpl` rejects `WALK_IN` for PayHere initiate/confirm. Online create still attaches customer + PayHere `Payment`.
+  - Acceptance criteria:
+    - Walk-in HTTP success persists booking with null `customer_id` and no `payments` insert.
+    - Online booking still creates a PayHere payment with customer set.
+    - Owner calendar shows the walk-in; cancel/status updates do not NPE on missing Customer or Payment.
 
 - [x] Surface hold expiry when the API returns it
   - Priority: High

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
+import BrandLogo from '../ui/BrandLogo';
 import ThemeToggle from '../ui/ThemeToggle';
 import LoginRoleSwitch from './LoginRoleSwitch';
 import SportsEquipment from './SportsEquipment';
@@ -45,7 +46,7 @@ export default function AuthAccessShell({
     <main className={`auth-access${admin ? ' is-admin' : ''}${still ? ' is-still' : ''}`}>
       <section className="auth-brand">
         <div className="auth-brand-top">
-          <Link to="/" className="auth-logo" aria-label="BooknPlay home">booknplay<span>.</span></Link>
+          <BrandLogo inverse className="auth-logo" />
           <ThemeToggle inverse />
         </div>
         <motion.div

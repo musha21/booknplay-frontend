@@ -1,9 +1,12 @@
-import { useCallback, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import VenueImage from './VenueImage';
 import { businessInitials, venueBusinessLogo, venueMediaList } from '../../utils/venueMedia';
+import { venueSportLabel } from '../../utils/venue';
 import { heroSlide, reducedHero } from '../../motion/variants';
+
+const AUTOPLAY_MS = 4000;
 
 function LogoBadge({ venue, owner, className = '' }) {
   const logo = venueBusinessLogo(venue, owner);
@@ -32,13 +35,16 @@ export default function VenueCarousel({
 }) {
   const reduced = useReducedMotion();
   const images = venueMediaList(venue);
+  const sportName = venueSportLabel(venue);
   const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [paused, setPaused] = useState(false);
   const touchStart = useRef(null);
   const labelId = useId();
   const count = images.length;
   const safeIndex = count ? ((index % count) + count) % count : 0;
   const current = count ? images[safeIndex] : '';
+  const autoplay = count > 1 && !reduced && !paused;
 
   const go = useCallback((next) => {
     if (count <= 1) return;
@@ -46,8 +52,20 @@ export default function VenueCarousel({
     setIndex(next);
   }, [count, safeIndex]);
 
-  const previous = () => go((safeIndex - 1 + count) % count);
-  const next = () => go((safeIndex + 1) % count);
+  const step = useCallback((delta) => {
+    if (count <= 1) return;
+    setDirection(delta);
+    setIndex((currentIndex) => (currentIndex + delta + count) % count);
+  }, [count]);
+
+  const previous = () => step(-1);
+  const next = () => step(1);
+
+  useEffect(() => {
+    if (!autoplay) return undefined;
+    const timer = setInterval(() => step(1), AUTOPLAY_MS);
+    return () => clearInterval(timer);
+  }, [autoplay, step, index]);
 
   const onKeyDown = (event) => {
     if (event.key === 'ArrowLeft') {
@@ -60,18 +78,29 @@ export default function VenueCarousel({
     }
   };
 
+  const pause = () => setPaused(true);
+  const resume = () => setPaused(false);
+
   return (
     <div
-      className={`relative overflow-hidden bg-navy-900/5 ${className}`}
+      className={`relative h-full w-full overflow-hidden bg-navy-900/5 ${className}`}
       role="region"
       aria-roledescription="carousel"
       aria-labelledby={labelId}
       tabIndex={count > 1 ? 0 : undefined}
       onKeyDown={onKeyDown}
+      onMouseEnter={pause}
+      onMouseLeave={resume}
+      onFocus={pause}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) resume();
+      }}
       onTouchStart={(event) => {
+        pause();
         touchStart.current = event.changedTouches[0]?.clientX ?? null;
       }}
       onTouchEnd={(event) => {
+        resume();
         if (touchStart.current == null || count <= 1) return;
         const delta = (event.changedTouches[0]?.clientX ?? touchStart.current) - touchStart.current;
         if (Math.abs(delta) < 40) return;
@@ -81,7 +110,7 @@ export default function VenueCarousel({
       }}
     >
       <span id={labelId} className="sr-only">{alt || venue?.name || 'Venue photos'}</span>
-      <AnimatePresence mode="wait" custom={direction}>
+      <AnimatePresence mode="sync" custom={direction} initial={false}>
         <motion.div
           key={current || 'empty'}
           custom={direction}
@@ -90,11 +119,19 @@ export default function VenueCarousel({
           animate="center"
           exit="exit"
           transition={{ duration: reduced ? 0.15 : 0.28 }}
-          className="h-full w-full"
+          className="absolute inset-0"
         >
-          <VenueImage src={current} alt={alt || venue?.name || ''} className={imageClassName} />
+          <VenueImage
+            src={current}
+            alt={alt || venue?.name || ''}
+            className={`block h-full w-full object-cover${/\bopacity-\S+/.test(imageClassName) ? ` ${imageClassName.match(/\bopacity-\S+/g).join(' ')}` : ''}`}
+            sportName={sportName}
+            eager
+          />
         </motion.div>
       </AnimatePresence>
+      {/* Keep frame height when parent does not stretch (owner cards use h-44 etc.) */}
+      <div className={`${imageClassName} pointer-events-none opacity-0`} aria-hidden="true" />
 
       {showLogo && <LogoBadge venue={venue} owner={owner} />}
 
@@ -107,9 +144,9 @@ export default function VenueCarousel({
               event.stopPropagation();
               previous();
             }}
-            className="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-navy-900/55 text-white backdrop-blur transition hover:bg-navy-900/75"
+            className="absolute left-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-navy-900/55 text-white backdrop-blur transition hover:bg-navy-900/75"
           >
-            <ChevronLeft fontSize="small" />
+            <ChevronLeft sx={{ fontSize: 18 }} />
           </button>
           <button
             type="button"
@@ -118,9 +155,9 @@ export default function VenueCarousel({
               event.stopPropagation();
               next();
             }}
-            className="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-navy-900/55 text-white backdrop-blur transition hover:bg-navy-900/75"
+            className="absolute right-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-navy-900/55 text-white backdrop-blur transition hover:bg-navy-900/75"
           >
-            <ChevronRight fontSize="small" />
+            <ChevronRight sx={{ fontSize: 18 }} />
           </button>
           <div className="absolute bottom-3 right-3 z-10 flex gap-1.5" aria-label="Photo position">
             {images.map((url, dotIndex) => (

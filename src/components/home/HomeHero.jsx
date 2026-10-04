@@ -1,6 +1,8 @@
-import { ArrowForward, LocationOn } from '@mui/icons-material';
+import { motion, useReducedMotion } from 'motion/react';
 import NavSearchBar from '../layout/NavSearchBar';
+import BrandLogo from '../ui/BrandLogo';
 import VenueImage from '../ui/VenueImage';
+import { fadeUp, reducedFade, staggerContainer } from '../../motion/variants';
 
 const DEFAULT_HEADING = 'Your next game starts here.';
 const DEFAULT_DESCRIPTION = 'Find your court. Bring your people. Make time for the sport you love.';
@@ -23,42 +25,67 @@ export default function HomeHero({
   homepage = {},
   image,
   imageAlt = '',
-  badge = 'The court is calling.',
   onExplore,
   searchFilters,
   onSearchSubmit,
 }) {
+  const reduced = useReducedMotion();
   const heading = homepage.heading || DEFAULT_HEADING;
   const description = homepage.description || DEFAULT_DESCRIPTION;
+  const item = reduced ? reducedFade : fadeUp;
+  const mediaTransition = reduced
+    ? { duration: 0.2 }
+    : { duration: 1.1, ease: [0.22, 1, 0.36, 1] };
 
   return (
-    <>
-      <section className="hp-hero">
-        <div className="hp-hero-copy">
-          <p className="hp-eyebrow"><span className="hp-tiny-court" aria-hidden="true">+</span> Less planning. More playing.</p>
-          <h1><HeroHeading>{heading}</HeroHeading></h1>
-          <p>{description}</p>
-          <button type="button" className="hp-hero-link" onClick={onExplore}>
-            Find your kind of play <span aria-hidden="true">→</span>
-          </button>
-          <p className="hp-launch-note"><LocationOn fontSize="inherit" /> Starting in Kandy. Built for Sri Lanka.</p>
-        </div>
-        <div className="hp-hero-photo">
-          <VenueImage src={image} alt={imageAlt || 'Sports venue'} />
-          <div className="hp-photo-shade" />
-          <span className="hp-photo-label">{badge}</span>
-          <div className="hp-photo-bottom">
-            <span>Less screen time.<br /><b>More game time.</b></span>
-            <button type="button" className="hp-round-arrow" aria-label="Find a venue" onClick={onExplore}><ArrowForward /></button>
-          </div>
-        </div>
-        <p className="hp-hero-side">BOOKNPLAY.LK</p>
-      </section>
-      {homepage.showSearch !== false && (
-        <div className="hp-search" id="home-search">
-          <NavSearchBar key={`${searchFilters?.sportId || ''}-${searchFilters?.date || ''}-${searchFilters?.time || ''}`} initialFilters={searchFilters} onSubmit={onSearchSubmit} />
-        </div>
-      )}
-    </>
+    <section className="hp-hero" aria-label="Booknplay hero">
+      <motion.div
+        className="hp-hero-media"
+        initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 1.06 }}
+        animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+        transition={mediaTransition}
+      >
+        <VenueImage src={image} alt={imageAlt || 'Sports venue'} eager />
+      </motion.div>
+      <div className="hp-hero-shade" aria-hidden="true" />
+
+      <div className="hp-hero-inner">
+        <motion.div
+          className="hp-hero-content"
+          variants={staggerContainer(reduced ? 0 : 0.1)}
+          initial="hidden"
+          animate="show"
+        >
+          <motion.div variants={item}>
+            <BrandLogo variant="home" inverse className="hp-hero-brand" />
+          </motion.div>
+          <motion.h1 variants={item}>
+            <HeroHeading>{heading}</HeroHeading>
+          </motion.h1>
+          <motion.p variants={item}>{description}</motion.p>
+          <motion.div variants={item}>
+            <button type="button" className="hp-hero-link" onClick={onExplore}>
+              Find your kind of play <span aria-hidden="true">→</span>
+            </button>
+          </motion.div>
+        </motion.div>
+
+        {homepage.showSearch !== false && (
+          <motion.div
+            className="hp-hero-search"
+            id="home-search"
+            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={reduced ? { duration: 0.2 } : { delay: 0.35, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <NavSearchBar
+              key={`${searchFilters?.sportId || ''}-${searchFilters?.date || ''}-${searchFilters?.time || ''}`}
+              initialFilters={searchFilters}
+              onSubmit={onSearchSubmit}
+            />
+          </motion.div>
+        )}
+      </div>
+    </section>
   );
 }

@@ -17,16 +17,18 @@ import {
   planLimitMessage,
 } from '../../utils/subscription';
 
+const STRIP_DAYS = 7;
+
 const STATUS = {
   AVAILABLE: {
     label: 'Open',
-    className: 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100',
-    dot: 'bg-emerald-500',
+    className: 'border-line bg-surface text-ink hover:border-navy-900 hover:shadow-sm',
+    dot: 'border border-line bg-surface',
   },
   BOOKED: {
     label: 'Booked',
-    className: 'border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-100',
-    dot: 'bg-rose-500',
+    className: 'cursor-default border-line bg-canvas text-muted opacity-70',
+    dot: 'border border-line bg-canvas',
   },
   HELD: {
     label: 'Held',
@@ -47,8 +49,15 @@ const STATUS = {
 
 const slotStatus = (slot) => (slot.available ? 'AVAILABLE' : (slot.reason || 'BOOKED'));
 const timeLabel = (value) => String(value || '').slice(0, 5);
-const slotKey = (slot) => `${slot.startTime}-${slot.endTime}`;
 const slotLabel = (slot) => `${timeLabel(slot.startTime)}–${timeLabel(slot.endTime)}${String(slot.endTime) <= String(slot.startTime) ? ' +1' : ''}`;
+/** Normalize to HH:mm:ss for LocalTime JSON. */
+const toApiTime = (value) => {
+  const raw = String(value || '').trim();
+  if (/^\d{2}:\d{2}:\d{2}$/.test(raw)) return raw;
+  if (/^\d{2}:\d{2}$/.test(raw)) return `${raw}:00`;
+  const sliced = raw.slice(0, 5);
+  return /^\d{2}:\d{2}$/.test(sliced) ? `${sliced}:00` : raw;
+};
 
 export default function OwnerCalendarPage() {
   const { venueId } = useParams();
@@ -86,24 +95,14 @@ export default function OwnerCalendarPage() {
     : courtCalendars.filter((court) => court.courtId === effectiveCourtFilter);
 
   const dates = useMemo(
-    () => Array.from({ length: 7 }, (_, index) => rangeStart.add(index, 'day').format('YYYY-MM-DD')),
+    () => Array.from({ length: STRIP_DAYS }, (_, index) => rangeStart.add(index, 'day').format('YYYY-MM-DD')),
     [rangeStart],
   );
-  const timeRows = useMemo(() => {
-    const seen = new Set();
-    const rows = [];
-    visibleCourts.forEach((court) => (court.slots || []).forEach((slot) => {
-      const key = slotKey(slot);
-      if (!seen.has(key)) {
-        seen.add(key);
-        rows.push(slot);
-      }
-    }));
-    return rows;
-  }, [visibleCourts]);
+  const today = dayjs().format('YYYY-MM-DD');
 
   const allSlots = courtCalendars.flatMap((court) => court.slots || []);
   const availableCount = allSlots.filter((slot) => slot.available).length;
+  const hasAnySlots = visibleCourts.some((court) => (court.slots || []).length > 0);
 
   const refresh = () => calendarQuery.refetch();
 
@@ -121,12 +120,14 @@ export default function OwnerCalendarPage() {
 
   const submitWalkIn = async () => {
     if (!panel) return;
+    const startTime = adjustTime ? toApiTime(panel.startTime) : toApiTime(panel.slot?.startTime || panel.startTime);
+    const endTime = adjustTime ? toApiTime(panel.endTime) : toApiTime(panel.slot?.endTime || panel.endTime);
     try {
       await ownerCalendarApi.createWalkIn({
         courtId: panel.court.courtId,
         date,
-        startTime: `${panel.startTime}:00`,
-        endTime: `${panel.endTime}:00`,
+        startTime,
+        endTime,
         guestName: walkInForm.guestName.trim(),
         guestPhone: walkInForm.guestPhone.trim(),
       });
@@ -134,7 +135,7 @@ export default function OwnerCalendarPage() {
       setPanel(null);
       refresh();
     } catch (error) {
-      toast.error(planLimitMessage(error, 'Walk-in booking failed'));
+      toast.error(error.response?.data?.message || planLimitMessage(error, 'Walk-in booking failed'));
     }
   };
 
@@ -178,10 +179,14 @@ export default function OwnerCalendarPage() {
     }
   };
 
-  const moveWeek = (days) => {
+  const moveStrip = (days) => {
     const next = rangeStart.add(days, 'day');
     setRangeStart(next);
-    setDate(next.format('YYYY-MM-DD'));
+    const windowEnd = next.add(STRIP_DAYS - 1, 'day');
+    const selected = dayjs(date);
+    if (selected.isBefore(next, 'day') || selected.isAfter(windowEnd, 'day')) {
+      setDate(next.format('YYYY-MM-DD'));
+    }
   };
 
   const statusKey = panel ? slotStatus(panel.slot) : null;
@@ -196,7 +201,7 @@ export default function OwnerCalendarPage() {
             {calendar?.venueName || 'Booking calendar'}
           </h1>
           <p className="mt-0.5 text-xs text-muted">
-            {dayjs(date).format('dddd, D MMM')} · {availableCount} open slots
+            {dayjs(date).format('ddd, D MMM')} · {availableCount} open slots
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -210,13 +215,14 @@ export default function OwnerCalendarPage() {
       </header>
 
       <div className="owner-calendar-controls">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <Button aria-label="Previous week" variant="outlined" size="small" className="!min-w-10 !shrink-0 !px-0" onClick={() => moveWeek(-7)}>
+        <div className="flex min-w-0 items-center gap-2">
+          <Button aria-label="Previous week" variant="outlined" size="small" className="!min-w-10 !shrink-0 !px-0" onClick={() => moveStrip(-7)}>
             <ArrowBack fontSize="small" />
           </Button>
           <div className="owner-calendar-days" role="tablist" aria-label="Week days">
             {dates.map((day) => {
               const active = day === date;
+              const isToday = day === today;
               return (
                 <button
                   key={day}
@@ -224,7 +230,7 @@ export default function OwnerCalendarPage() {
                   role="tab"
                   aria-selected={active}
                   onClick={() => setDate(day)}
-                  className={`owner-day-chip ${active ? 'owner-day-chip-active' : ''}`}
+                  className={`owner-day-chip ${active ? 'owner-day-chip-active' : ''} ${isToday && !active ? 'owner-day-chip-today' : ''}`}
                 >
                   <span>{dayjs(day).format('ddd')}</span>
                   <strong>{dayjs(day).format('D')}</strong>
@@ -232,12 +238,15 @@ export default function OwnerCalendarPage() {
               );
             })}
           </div>
-          <Button aria-label="Next week" variant="outlined" size="small" className="!min-w-10 !shrink-0 !px-0" onClick={() => moveWeek(7)}>
+          <Button aria-label="Next week" variant="outlined" size="small" className="!min-w-10 !shrink-0 !px-0" onClick={() => moveStrip(7)}>
             <ArrowForward fontSize="small" />
           </Button>
+          <p className="hidden shrink-0 text-sm font-semibold text-ink sm:block">
+            {dayjs(date).format('ddd, D MMM')}
+          </p>
         </div>
 
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-line pt-2">
           <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Filter by bookable space">
             <button type="button" aria-pressed={effectiveCourtFilter === 'all'} onClick={() => setCourtFilter('all')} className={`calendar-filter ${effectiveCourtFilter === 'all' ? 'calendar-filter-active' : ''}`}>
               All
@@ -254,10 +263,10 @@ export default function OwnerCalendarPage() {
               </button>
             ))}
           </div>
-          <div className="hidden flex-wrap gap-x-3 gap-y-1 text-[11px] font-semibold text-muted lg:flex" aria-label="Legend">
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-semibold text-muted" aria-label="Legend">
             {Object.entries(STATUS).map(([key, item]) => (
               <span key={key} className="flex items-center gap-1.5">
-                <span className={`h-2 w-2 rounded-full ${item.dot}`} />
+                <span className={`inline-block h-2.5 w-2.5 rounded ${item.dot}`} />
                 {item.label}
               </span>
             ))}
@@ -267,13 +276,15 @@ export default function OwnerCalendarPage() {
 
       <section className="owner-calendar-board-wrap surface-card">
         {calendarQuery.isLoading ? (
-          <div className="space-y-3 p-4">{[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} variant="rounded" height={48} />)}</div>
+          <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => <Skeleton key={item} variant="rounded" height={56} />)}
+          </div>
         ) : calendarQuery.isError ? (
           <div className="p-6 text-center">
             <p className="font-extrabold text-ink">Calendar unavailable</p>
             <Button className="!mt-4" onClick={refresh}>Try again</Button>
           </div>
-        ) : !visibleCourts.length || !timeRows.length ? (
+        ) : !visibleCourts.length || !hasAnySlots ? (
           <div className="p-5">
             <EmptyState
               icon={CalendarMonth}
@@ -282,57 +293,51 @@ export default function OwnerCalendarPage() {
             />
           </div>
         ) : (
-          <div className="owner-calendar-board-scroll">
-            <div
-              className="calendar-board owner-calendar-board"
-              style={{ gridTemplateColumns: `72px repeat(${visibleCourts.length}, minmax(120px, 1fr))` }}
-            >
-              <div className="calendar-corner">Time</div>
-              {visibleCourts.map((court) => (
-                <div key={court.courtId} className="calendar-court-heading">
-                  <strong>{court.courtName}</strong>
-                  <span>{court.sportName || 'Space'}</span>
+          <div className="owner-calendar-board-scroll owner-slot-panels">
+            {visibleCourts.map((court) => {
+              const slots = court.slots || [];
+              return (
+                <div key={court.courtId} className="owner-slot-court">
+                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                    <div>
+                      <h2 className="text-sm font-extrabold text-ink">{court.courtName}</h2>
+                      <p className="text-xs text-muted">{court.sportName || 'Bookable space'}</p>
+                    </div>
+                    <p className="text-[11px] font-semibold text-muted">
+                      {slots.filter((slot) => slot.available).length} open
+                    </p>
+                  </div>
+                  {slots.length === 0 ? (
+                    <p className="text-sm text-muted">No slots for this day.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                      {slots.map((slot) => {
+                        const keyStatus = slotStatus(slot);
+                        const item = STATUS[keyStatus] || STATUS.BOOKED;
+                        return (
+                          <button
+                            key={`${court.courtId}-${slot.startTime}-${slot.endTime}`}
+                            type="button"
+                            onClick={() => openSlot(court, slot)}
+                            aria-label={`${court.courtName}, ${slotLabel(slot)}, ${item.label}`}
+                            className={`rounded-xl border p-3 text-center transition-colors ${item.className}`}
+                          >
+                            <div className="text-sm font-bold">
+                              {timeLabel(slot.startTime)} – {timeLabel(slot.endTime)}
+                            </div>
+                            <div className="mt-0.5 text-xs font-semibold">
+                              {slot.available
+                                ? `LKR ${Number(slot.price || 0).toLocaleString()}`
+                                : item.label}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              ))}
-              {timeRows.flatMap((row) => {
-                const key = slotKey(row);
-                return [
-                  <div key={`time-${key}`} className="calendar-time">
-                    <strong>{timeLabel(row.startTime)}</strong>
-                    <span>{timeLabel(row.endTime)}</span>
-                  </div>,
-                  ...visibleCourts.map((court) => {
-                    const slot = (court.slots || []).find((candidate) => slotKey(candidate) === key);
-                    if (!slot) {
-                      return (
-                        <div key={`${court.courtId}-${key}`} className="calendar-cell">
-                          <span className="text-[10px] text-muted">—</span>
-                        </div>
-                      );
-                    }
-                    const keyStatus = slotStatus(slot);
-                    const item = STATUS[keyStatus] || STATUS.BOOKED;
-                    return (
-                      <div key={`${court.courtId}-${key}`} className="calendar-cell">
-                        <button
-                          type="button"
-                          onClick={() => openSlot(court, slot)}
-                          aria-label={`${court.courtName}, ${slotLabel(slot)}, ${item.label}`}
-                          className={`calendar-slot ${item.className}`}
-                        >
-                          <span className="font-extrabold">{item.label}</span>
-                          <span className="mt-0.5 text-[10px] opacity-80">
-                            {slot.available
-                              ? `LKR ${Number(slot.price || 0).toLocaleString()}`
-                              : slotLabel(slot)}
-                          </span>
-                        </button>
-                      </div>
-                    );
-                  }),
-                ];
-              })}
-            </div>
+              );
+            })}
           </div>
         )}
       </section>

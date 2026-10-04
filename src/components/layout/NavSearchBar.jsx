@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { LocationOn, Search } from '@mui/icons-material';
 import { useSports } from '../../hooks/useVenues';
 import { KANDY_AREAS } from '../../constants/locations';
+import { MAIN_SPORT_FALLBACKS, curateMainSports } from '../../constants/sports';
 
 export default function NavSearchBar({ initialFilters = {}, onSubmit }) {
   const sportsQuery = useSports();
@@ -11,14 +12,13 @@ export default function NavSearchBar({ initialFilters = {}, onSubmit }) {
   const [date, setDate] = useState(initialFilters.date || '');
   const [time, setTime] = useState(initialFilters.time || '');
   const today = new Date().toLocaleDateString('en-CA');
-  const heroSports = useMemo(() => [
-    ['Badminton', ['badminton']],
-    ['Indoor cricket', ['indoor cricket', 'cricket']],
-    ['Futsal', ['futsal', 'football']],
-  ].map(([label, terms]) => {
-    const sport = sports.find((item) => terms.some((term) => String(item.name).toLowerCase().includes(term)));
-    return sport ? { ...sport, displayName: label } : null;
-  }).filter(Boolean), [sports]);
+  const heroSports = useMemo(() => {
+    const curated = curateMainSports(sports);
+    const missing = MAIN_SPORT_FALLBACKS.filter(
+      (fallback) => !curated.some((sport) => sport.displayName === fallback.displayName),
+    );
+    return [...curated, ...missing].slice(0, 10);
+  }, [sports]);
 
   const submit = (event) => {
     event.preventDefault();

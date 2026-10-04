@@ -3,8 +3,8 @@
   "short_name": "BookNPlay",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F172A",
-  "theme_color": "#84CC16",
+  "background_color": "#FBFCF8",
+  "theme_color": "#C7F84B",
   "icons": [
     {
       "src": "/favicon.svg",

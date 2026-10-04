@@ -14,7 +14,7 @@ export function buildVenueSearchParams({ sportId, city, date, time, name } = {})
 
 export function buildVenueQuery({ city, date, time, size = 24 } = {}) {
   return {
-    city: city?.trim() || LAUNCH_CITY,
+    city: city?.trim() || undefined,
     date: date || undefined,
     time: time || undefined,
     size,

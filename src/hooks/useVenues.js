@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getVenues, getVenueById, getAllSports, getBusinesses, getHomepageConfig, getCourtsByVenue, getAvailability } from '../api/public';
 import { unwrapApiData, unwrapList } from '../utils/apiData';
 
@@ -28,6 +28,7 @@ export const useVenues = (params) =>
     select: unwrapList,
     staleTime: 0,
     refetchOnMount: 'always',
+    placeholderData: keepPreviousData,
   });
 
 export const useVenue = (id) =>

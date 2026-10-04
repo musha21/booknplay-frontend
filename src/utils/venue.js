@@ -27,7 +27,16 @@ export function venuePrice(venue) {
 }
 
 export function venueSportLabel(venue) {
-  return venue?.sportName || venue?.venueType || venue?.sportType || 'Multi-sport venue';
+  if (!venue) return 'Multi-sport venue';
+  const courtSports = [...new Set(
+    (venue.courts || [])
+      .map((court) => court?.sportName || court?.sport?.name)
+      .filter(Boolean)
+      .map((name) => String(name).trim()),
+  )];
+  if (courtSports.length === 1) return courtSports[0];
+  if (courtSports.length > 1) return `${courtSports[0]} +${courtSports.length - 1}`;
+  return venue.sportName || venue.venueType || venue.sportType || 'Multi-sport venue';
 }
 
 export function sportAccent(name = '') {

@@ -1,23 +1,25 @@
-import { createElement } from 'react';
-import { ArrowForward, Flare } from '@mui/icons-material';
 import { motion, useReducedMotion } from 'motion/react';
-import { sportIcon } from '../../utils/venue';
+import SportIcon from '../ui/SportIcon';
 import { fadeUp, reducedFade, staggerContainer } from '../../motion/variants';
 
 export default function SportCategoryButton({ sport, selected, onSelect }) {
   const label = sport.displayName || sport.name;
-  const Icon = sport.all ? Flare : sportIcon(sport.name);
+  const isAll = Boolean(sport.all);
   return (
     <button
       type="button"
       aria-pressed={selected}
       aria-label={label}
+      title={label}
       onClick={onSelect}
-      className={`hp-sport-tile ${selected ? 'is-active' : ''}`}
+      className={`hp-sport-tile ${isAll ? 'is-all' : ''} ${selected ? 'is-active' : ''}`}
     >
-      <span className="hp-sport-symbol" aria-hidden="true">{createElement(Icon)}</span>
-      <span>{label}</span>
-      <ArrowForward className="hp-tile-arrow" />
+      {!isAll && (
+        <span className="hp-sport-symbol" aria-hidden="true">
+          <SportIcon name={label} all={false} alt="" size={28} />
+        </span>
+      )}
+      <span className="hp-sport-label">{label}</span>
     </button>
   );
 }
@@ -32,7 +34,7 @@ export function SportCategoryGrid({ sports, sportId, onSelect }) {
       viewport={{ once: true, amount: 0.2 }}
       className="hp-sport-grid"
     >
-      {sports.slice(0, 4).map((sport) => (
+      {sports.map((sport) => (
         <motion.div key={sport.id || sport.name} variants={reduced ? reducedFade : fadeUp}>
           <SportCategoryButton
             sport={sport}

@@ -14,25 +14,27 @@ export default function Footer() {
   if (isHome) {
     return (
       <footer className="home-footer">
-        <div className="hp-footer-top">
-          <div>
-            <BrandLogo variant="home" />
-            <p>Find your place to play. Book courts and venues across Sri Lanka without the back-and-forth.</p>
+        <div className="home-footer-inner">
+          <div className="hp-footer-top">
+            <div>
+              <BrandLogo variant="home" />
+              <p>Find your place to play. Book courts and venues across Sri Lanka without the back-and-forth.</p>
+            </div>
+            <div className="hp-footer-links">
+              {groups.map((group) => (
+                <div key={group.title}>
+                  <b>{group.title}</b>
+                  {group.items.map(([label, to]) => <Link key={label} to={to}>{label}</Link>)}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="hp-footer-links">
-            {groups.map((group) => (
-              <div key={group.title}>
-                <b>{group.title}</b>
-                {group.items.map(([label, to]) => <Link key={label} to={to}>{label}</Link>)}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="hp-footer-bottom">
-          <span>© 2026 Booknplay.lk</span>
-          <div>
-            <Link to="/account/privacy">Privacy</Link>
-            <span>Play more. Plan less.</span>
+          <div className="hp-footer-bottom">
+            <span>© 2026 Booknplay.lk</span>
+            <div>
+              <Link to="/account/privacy">Privacy</Link>
+              <span>Play more. Plan less.</span>
+            </div>
           </div>
         </div>
       </footer>

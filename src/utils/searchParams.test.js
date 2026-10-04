@@ -24,8 +24,8 @@ describe('buildLegacySearchRedirect', () => {
 });
 
 describe('buildVenueQuery', () => {
-  it('accepts explicit city and formats parameters', () => {
-    expect(buildVenueQuery({ city: 'Katugastota', date: '2026-10-10', time: '18:30' })).toEqual({
+  it('accepts explicit city and formats parameters without sportId', () => {
+    expect(buildVenueQuery({ city: 'Katugastota', date: '2026-10-10', time: '18:30', sportId: '4' })).toEqual({
       city: 'Katugastota',
       date: '2026-10-10',
       time: '18:30',
@@ -34,9 +34,9 @@ describe('buildVenueQuery', () => {
     });
   });
 
-  it('defaults to Kandy when city is omitted', () => {
+  it('omits city when city is not provided', () => {
     expect(buildVenueQuery({ date: '2026-10-10' })).toEqual({
-      city: 'Kandy',
+      city: undefined,
       date: '2026-10-10',
       time: undefined,
       size: 24,
