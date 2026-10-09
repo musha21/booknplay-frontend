@@ -22,7 +22,7 @@ const AccordionGallery = ({
   radius = 16,
   expandRatio = 0.52,
   orientation = 'horizontal',
-  duration = 0.6,
+  duration = 0.1,
   ease = 'power3.out',
   parallax = 0.5,
   tilt = 8,
@@ -33,9 +33,10 @@ const AccordionGallery = ({
   grayscale = true,
   className = '',
   autoPlay = false,
-  autoPlayInterval = 3000,
+  autoPlayInterval = 1000,
   pauseOnHover: _pauseOnHover = true,
   onItemActivate,
+
 }) => {
   const rootRef = useRef(null);
   const panelRefs = useRef([]);

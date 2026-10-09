@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Bolt, CalendarMonth, Verified } from '@mui/icons-material';
+import { toast } from 'sonner';
 import { useBusinesses, useHomepageConfig, useSports, useVenues } from '../hooks/useVenues';
 import BookingHeroFallback from '../components/home/BookingHeroFallback';
 import CityDestinationCard from '../components/home/CityDestinationCard';
@@ -11,10 +12,11 @@ import { SportCategoryGrid } from '../components/home/SportCategoryButton';
 import AccordionGallery from '../components/ui/AccordionGallery';
 import heroArena from '../assets/brand/midnight-multisport-arena.png';
 import { MAIN_SPORT_FALLBACKS, MAIN_SPORT_PRIORITY, curateMainSports } from '../constants/sports';
-import { buildVenueQuery, buildVenueSearchParams, LAUNCH_CITY } from '../utils/searchParams';
+import { buildVenueQuery, LAUNCH_CITY } from '../utils/searchParams';
 import mediaUrl from '../utils/mediaUrl';
-import { venueCover, venueSportLabel } from '../utils/venue';
-import { readRecentlyViewed } from '../utils/recentlyViewed';
+import { venueCover, venuePrice, venueSportLabel } from '../utils/venue';
+import { formatDistanceKm, haversineKm } from '../utils/geo';
+import { getActiveAreas, venueMatchesArea } from '../config/locationConfig';
 
 const slideInWindow = (slide) => {
   const today = new Date().toISOString().slice(0, 10);
@@ -23,18 +25,11 @@ const slideInWindow = (slide) => {
   return true;
 };
 
-const HOME_VENUE_SIZE = 48;
-const ALL_SPORTS = { id: '', name: 'All sports', displayName: 'All sports', all: true, fallback: true };
+const HOME_VENUE_SIZE = 60;
 const FEATURED_CITIES = ['Kandy', 'Colombo', 'Negombo', 'Dehiwala', 'Kurunegala'];
 const DEFAULT_ORDER = ['sports', 'venues', 'cities', 'howItWorks', 'trust', 'ownerPromotion'];
 
-const orderedSelection = (items, ids = []) => ids?.length ? ids.map((id) => items.find((item) => String(item.id) === String(id))).filter(Boolean) : items;
-const prioritizedSelection = (items, ids = []) => {
-  if (!ids?.length) return items;
-  const featured = orderedSelection(items, ids);
-  const featuredIds = new Set(featured.map((item) => String(item.id)));
-  return [...featured, ...items.filter((item) => !featuredIds.has(String(item.id)))];
-};
+const orderedSelection = (items, ids = []) => (ids?.length ? ids.map((id) => items.find((item) => String(item.id) === String(id))).filter(Boolean) : items);
 
 const resolveSportPriority = (sport) => {
   const names = [sport?.displayName, sport?.name].filter(Boolean).map((value) => String(value).toLowerCase());
@@ -75,33 +70,27 @@ const venueMatchesSport = (venue, sport) => {
   }
   if (textMatchesSport(venue.sportName, sport) || textMatchesSport(venueSportLabel(venue), sport)) return true;
   if (venue.courts?.some((court) => textMatchesSport(court.sportName || court.sport?.name, sport))) return true;
-  // No usable sport metadata while a sport is selected → exclude (filter must narrow results).
   return false;
-};
-
-const venueMatchesLocation = (venue, targetLocation) => {
-  if (!targetLocation || targetLocation === LAUNCH_CITY) return true;
-  const query = targetLocation.toLowerCase();
-  const city = String(venue.city || '').toLowerCase();
-  const address = String(venue.address || venue.formattedAddress || '').toLowerCase();
-  return city.includes(query) || address.includes(query);
 };
 
 export default function HomePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [urlParams] = useSearchParams();
-  const sportId = urlParams.get('sportId') || '';
-  const city = urlParams.get('city') || '';
-  const date = urlParams.get('date') || '';
-  const time = urlParams.get('time') || '';
-  const [businessId, setBusinessId] = useState('');
   const sportsQuery = useSports();
   useBusinesses();
-  const venueParams = useMemo(
-    () => buildVenueQuery({ city, date, time, size: HOME_VENUE_SIZE }),
-    [city, date, time],
-  );
+
+  // Date & time filters — drive the venue query and hero filter bar
+  const [filterDate, setFilterDate] = useState('');
+  const [filterTime, setFilterTime] = useState('');
+
+  // Load venues restricted to active Kandy service area for the selected date & time
+  const venueParams = useMemo(() => {
+    const q = buildVenueQuery({ city: LAUNCH_CITY, size: HOME_VENUE_SIZE });
+    if (filterDate) q.date = filterDate;
+    if (filterTime) q.time = filterTime;
+    return q;
+  }, [filterDate, filterTime]);
   const venuesQuery = useVenues(venueParams);
   const homepageQuery = useHomepageConfig();
   const homepage = homepageQuery.data || {};
@@ -125,17 +114,126 @@ export default function HomePage() {
     const missing = MAIN_SPORT_FALLBACKS.filter(
       (fallback) => !selected.some((sport) => sport.displayName === fallback.displayName),
     );
-    return [ALL_SPORTS, ...selected, ...missing].slice(0, 11);
+    return [...selected, ...missing].slice(0, 11);
   }, [sports, homepage.featuredSportIds]);
 
-  const selectedSport = useMemo(() => {
-    if (!sportId) return ALL_SPORTS;
-    const matched = sports.find((sport) => String(sport.id) === String(sportId))
-      || displaySports.find((sport) => String(sport.id) === String(sportId));
-    if (!matched) return ALL_SPORTS;
-    const curated = displaySports.find((sport) => String(sport.id) === String(matched.id));
-    return curated ? { ...matched, displayName: curated.displayName || matched.name } : matched;
-  }, [sportId, sports, displaySports]);
+  // Determine Cricket default sport
+  const cricketSport = useMemo(() => {
+    return (
+      displaySports.find(
+        (s) => textMatchesSport('cricket', s) || String(s.name || '').toLowerCase().includes('cricket'),
+      )
+      || sports.find(
+        (s) => textMatchesSport('cricket', s) || String(s.name || '').toLowerCase().includes('cricket'),
+      )
+      || displaySports[0]
+      || { id: 'cricket', displayName: 'Indoor cricket', name: 'Cricket' }
+    );
+  }, [displaySports, sports]);
+
+  // Instant Filter State - Default to Cricket & All Kandy
+  const [selectedSportId, setSelectedSportId] = useState(urlParams.get('sportId') || '');
+  const [selectedArea, setSelectedArea] = useState(urlParams.get('area') || 'all');
+  const [distanceKm, setDistanceKm] = useState('');
+  const [sortBy, setSortBy] = useState('price_asc');
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationStatus, setLocationStatus] = useState('idle');
+
+  // Sync default sport ID once loaded if none set
+  useEffect(() => {
+    if (!selectedSportId && cricketSport?.id) {
+      setSelectedSportId(cricketSport.id);
+    }
+  }, [cricketSport, selectedSportId]);
+
+  const activeSport = useMemo(() => {
+    if (!selectedSportId) return cricketSport;
+    return (
+      displaySports.find((s) => String(s.id) === String(selectedSportId))
+      || sports.find((s) => String(s.id) === String(selectedSportId))
+      || cricketSport
+    );
+  }, [selectedSportId, displaySports, sports, cricketSport]);
+
+  // Geolocation Handler
+  const handleFetchLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser.');
+      setLocationStatus('denied');
+      return;
+    }
+    setLocationStatus('loading');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(coords);
+        setLocationStatus('active');
+        setSortBy('nearest');
+        toast.success('Location updated!');
+      },
+      (err) => {
+        console.warn('Geolocation failed or denied:', err);
+        setLocationStatus('denied');
+        toast.info('Location permission unavailable. Distance filter disabled.');
+      },
+      { timeout: 10000, maximumAge: 60000 },
+    );
+  };
+
+  // Instant Filtering & Sorting Logic
+  const filteredVenues = useMemo(() => {
+    let list = venues
+      .filter((v) => venueMatchesSport(v, activeSport))
+      .filter((v) => venueMatchesArea(v, selectedArea));
+
+    // Calculate actual distance only when coordinates are present
+    if (userLocation?.lat && userLocation?.lng) {
+      list = list.map((v) => {
+        const km = haversineKm(userLocation.lat, userLocation.lng, v.latitude, v.longitude);
+        return { ...v, distanceKm: km, distanceLabel: formatDistanceKm(km) };
+      });
+
+      if (distanceKm && distanceKm !== 'all') {
+        const maxDist = Number(distanceKm);
+        list = list.filter((v) => v.distanceKm != null && v.distanceKm <= maxDist);
+      }
+    } else {
+      list = list.map((v) => ({ ...v, distanceKm: null, distanceLabel: null }));
+    }
+
+    // Apply Sorting
+    return [...list].sort((a, b) => {
+      if (sortBy === 'nearest' && userLocation) {
+        return (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999);
+      }
+      if (sortBy === 'price_desc') {
+        return venuePrice(b) - venuePrice(a);
+      }
+      // Default: price_asc
+      return venuePrice(a) - venuePrice(b);
+    });
+  }, [venues, activeSport, selectedArea, distanceKm, sortBy, userLocation]);
+
+  // Dynamic Heading Calculation
+  const showcaseHeading = useMemo(() => {
+    const sportLabel = activeSport.displayName || activeSport.name || 'Cricket';
+    const activeAreas = getActiveAreas();
+    const matchedArea = activeAreas.find((a) => a.value === selectedArea || a.id === selectedArea);
+    const areaLabel = matchedArea && matchedArea.value ? matchedArea.name : LAUNCH_CITY;
+
+    return `${sportLabel} Venues in ${areaLabel}`;
+  }, [activeSport, selectedArea]);
+
+  // Reset Filters to Default
+  const handleResetFilters = () => {
+    setSelectedSportId(cricketSport.id);
+    setSelectedArea('all');
+    setDistanceKm('');
+    setSortBy(userLocation ? 'nearest' : 'price_asc');
+    setFilterDate('');
+    setFilterTime('');
+  };
 
   const cityCards = useMemo(() => {
     const grouped = new Map();
@@ -167,48 +265,29 @@ export default function HomePage() {
     [premiumSlides],
   );
 
-  const matchingVenues = useMemo(() => {
-    return venues
-      .filter((venue) => venueMatchesSport(venue, selectedSport))
-      .filter((venue) => venueMatchesLocation(venue, city))
-      .filter((venue) => !businessId || String(venue.businessId) === String(businessId));
-  }, [venues, selectedSport, city, businessId]);
-
-  const displayedVenues = useMemo(
-    () => sportId || city || date || time || businessId ? matchingVenues : prioritizedSelection(matchingVenues, homepage.featuredVenueIds),
-    [matchingVenues, sportId, city, date, time, businessId, homepage.featuredVenueIds],
-  );
-
   const venueCounts = useMemo(
     () => Object.fromEntries(displaySports.map((sport) => [sport.id, venues.filter((venue) => venueMatchesSport(venue, sport)).length])),
     [displaySports, venues],
   );
 
   const orderOf = (section) => DEFAULT_ORDER.indexOf(section) + 1;
-  const scrollToVenues = () => setTimeout(() => document.getElementById('venues')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  const scrollToVenues = useCallback(() => {
+    setTimeout(() => document.getElementById('venues')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }, []);
 
-  const updateVenueUrl = (filters) => {
-    const params = buildVenueSearchParams({ city, ...filters });
-    navigate({ pathname: '/', search: `?${params.toString()}`, hash: '#venues' });
-  };
+  // Filter summary for VenueShowcase toolbar
+  const filterSummary = useMemo(() => {
+    const sportLabel = activeSport?.displayName || activeSport?.name || '';
+    const areas = getActiveAreas();
+    const matchedArea = areas.find((a) => a.value === selectedArea || a.id === selectedArea);
+    const areaLabel = matchedArea && matchedArea.value ? matchedArea.name : '';
+    const parts = [];
+    if (sportLabel && !activeSport?.all) parts.push(sportLabel);
+    if (areaLabel) parts.push(areaLabel);
+    return parts.join(' · ') || null;
+  }, [activeSport, selectedArea]);
 
-  const applySearch = (filters) => {
-    setBusinessId('');
-    const params = buildVenueSearchParams(filters);
-    navigate({ pathname: '/search', search: `?${params.toString()}` });
-  };
-
-  const recentIds = useMemo(() => readRecentlyViewed(), []);
-  const recentVenues = useMemo(
-    () => recentIds.map((id) => venues.find((venue) => String(venue.id) === String(id))).filter(Boolean),
-    [recentIds, venues],
-  );
-
-  const clearFilters = () => applySearch({ sportId: '', city: '', date: '', time: '' });
-
-  const showBusinessVenues = (business) => {
-    setBusinessId(business.businessId || business.id);
-    updateVenueUrl({ sportId, city, date, time });
+  const showBusinessVenues = () => {
     scrollToVenues();
   };
 
@@ -218,11 +297,38 @@ export default function HomePage() {
     else scrollToVenues();
   };
 
-  const searchFilters = useMemo(() => ({ sportId, city, date, time }), [sportId, city, date, time]);
+  const filterProps = {
+    sports: displaySports,
+    selectedSportId: selectedSportId || cricketSport.id,
+    onSelectSport: setSelectedSportId,
+    selectedArea,
+    onSelectArea: setSelectedArea,
+    distanceKm,
+    onChangeDistance: setDistanceKm,
+    sortBy,
+    onChangeSort: setSortBy,
+    userLocation,
+    locationStatus,
+    onFetchLocation: handleFetchLocation,
+    onResetFilters: handleResetFilters,
+    isPanelOpen,
+    onTogglePanel: () => setIsPanelOpen((open) => !open),
+    resultCount: filteredVenues.length,
+    filterDate,
+    onChangeDate: setFilterDate,
+    filterTime,
+    onChangeTime: setFilterTime,
+    onFindVenue: scrollToVenues,
+  };
 
   return (
     <div className="home-page">
-      <BookingHeroFallback homepage={homepage} cover={heroArena} onSearch={findVenue} searchFilters={searchFilters} onSearchSubmit={applySearch} />
+      <BookingHeroFallback
+        homepage={homepage}
+        cover={heroArena}
+        onSearch={findVenue}
+        filterProps={filterProps}
+      />
 
       {homepage.showSports !== false && (
         <section id="sports" className="hp-section" style={{ order: orderOf('sports') }}>
@@ -233,20 +339,19 @@ export default function HomePage() {
             </div>
             <p className="hp-section-note">A little competition. A lot of good times.</p>
           </div>
-          <SportCategoryGrid sports={displaySports} sportId={sportId} venueCounts={venueCounts} onSelect={(sport) => {
-            const nextSportId = String(sportId) === String(sport.id) ? '' : sport.id;
-            applySearch({ sportId: nextSportId, city, date, time });
-          }} />
+          <SportCategoryGrid
+            sports={displaySports}
+            sportId={selectedSportId || cricketSport.id}
+            venueCounts={venueCounts}
+            onSelect={(sport) => {
+              setSelectedSportId(sport.id);
+              scrollToVenues();
+            }}
+          />
         </section>
       )}
 
       <PublicPromotionsStrip />
-
-      {recentVenues.length > 0 && (
-        <div style={{ order: orderOf('venues') }}>
-          <VenueShowcase venues={recentVenues} heading="Recently viewed" />
-        </div>
-      )}
 
       {premiumAccordionItems.length > 0 && (
         <section id="premium-courts" className="hp-section" style={{ order: orderOf('sports') }} aria-label="Premium courts">
@@ -278,12 +383,22 @@ export default function HomePage() {
       {homepage.showVenues !== false && (
         <div style={{ order: orderOf('venues') }}>
           <VenueShowcase
-            venues={displayedVenues}
-            city={city}
-            loading={venuesQuery.isPending || (venuesQuery.isFetching && displayedVenues.length === 0)}
+            venues={filteredVenues}
+            heading={showcaseHeading}
+            city={LAUNCH_CITY}
+            loading={venuesQuery.isPending || (venuesQuery.isFetching && filteredVenues.length === 0)}
             error={venuesQuery.isError}
             onRetry={() => venuesQuery.refetch()}
-            onClear={clearFilters}
+            onClear={handleResetFilters}
+            filterSummary={filterSummary}
+            onUseLocation={handleFetchLocation}
+            locationStatus={locationStatus}
+            hasLocation={Boolean(userLocation?.lat && userLocation?.lng)}
+            onEditFilters={() => {
+              const search = document.getElementById('home-search');
+              if (search) search.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              setIsPanelOpen(true);
+            }}
           />
         </div>
       )}
@@ -307,7 +422,10 @@ export default function HomePage() {
                 key={place.city}
                 city={place.city}
                 count={place.count}
-                onSelect={() => applySearch({ city: place.city, location: place.city })}
+                onSelect={() => {
+                  setSelectedArea(place.city);
+                  scrollToVenues();
+                }}
               />
             ))}
           </div>

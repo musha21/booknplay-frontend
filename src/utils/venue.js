@@ -82,3 +82,8 @@ export function venueOperatorName(venue) {
   return venue.businessName || venue.business?.name || '';
 }
 
+export function venueBusinessLogo(venue) {
+  if (!venue) return '';
+  return venue.businessLogoUrl || venue.business?.logoUrl || venue.business?.logo || venue.logoUrl || venue.businessImageUrl || '';
+}
+

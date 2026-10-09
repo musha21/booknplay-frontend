@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'motion/react';
-import NavSearchBar from '../layout/NavSearchBar';
+import HomeFilterBar from './HomeFilterBar';
 import BrandLogo from '../ui/BrandLogo';
 import VenueImage from '../ui/VenueImage';
 import { fadeUp, reducedFade, staggerContainer } from '../../motion/variants';
@@ -26,8 +26,7 @@ export default function HomeHero({
   image,
   imageAlt = '',
   onExplore,
-  searchFilters,
-  onSearchSubmit,
+  filterProps = {},
 }) {
   const reduced = useReducedMotion();
   const heading = homepage.heading || DEFAULT_HEADING;
@@ -78,14 +77,11 @@ export default function HomeHero({
             animate={{ opacity: 1, y: 0 }}
             transition={reduced ? { duration: 0.2 } : { delay: 0.35, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
-            <NavSearchBar
-              key={`${searchFilters?.sportId || ''}-${searchFilters?.date || ''}-${searchFilters?.time || ''}`}
-              initialFilters={searchFilters}
-              onSubmit={onSearchSubmit}
-            />
+            <HomeFilterBar {...filterProps} />
           </motion.div>
         )}
       </div>
     </section>
   );
 }
+
