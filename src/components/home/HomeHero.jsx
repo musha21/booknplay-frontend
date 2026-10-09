@@ -4,13 +4,13 @@ import BrandLogo from '../ui/BrandLogo';
 import VenueImage from '../ui/VenueImage';
 import { fadeUp, reducedFade, staggerContainer } from '../../motion/variants';
 
-const DEFAULT_HEADING = 'Your next game starts here.';
+const DEFAULT_HEADING = 'Find. Book. Play.';
 const DEFAULT_DESCRIPTION = 'Find your court. Bring your people. Make time for the sport you love.';
 
 function HeroHeading({ children }) {
   const text = String(children || DEFAULT_HEADING);
-  const highlight = 'starts here.';
-  const index = text.toLowerCase().indexOf(highlight);
+  const highlight = 'play.';
+  const index = text.toLowerCase().lastIndexOf(highlight);
   if (index === -1) return text;
   return (
     <>

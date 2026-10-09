@@ -138,6 +138,15 @@ export function isOwnerMutatePath(pathname = '') {
   if (/\/owner\/venues\/[^/]+\/courts$/.test(path)) return true;
   if (/\/owner\/venues\/[^/]+\/calendar$/.test(path)) return true;
   if (/\/owner\/venues\/[^/]+\/booking-policy$/.test(path)) return true;
+  if ([
+    '/owner/walk-in',
+    '/owner/blocked-slots',
+    '/owner/maintenance',
+    '/owner/pricing',
+    '/owner/promotions',
+    '/owner/refunds',
+    '/owner/settings',
+  ].includes(path)) return true;
   return false;
 }
 

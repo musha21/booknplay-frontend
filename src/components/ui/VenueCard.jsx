@@ -22,7 +22,7 @@ function venueAmenities(venue) {
   return [...new Set((venue.courts || []).map((court) => court.sportName || court.sport?.name).filter(Boolean))].slice(0, 3);
 }
 
-export default function VenueCard({ venue, variant = 'default', actionLabel = 'View venue', showSlots = false, slotIndex = 0, saved = false, onToggleSaved }) {
+export default function VenueCard({ venue, variant = 'default', actionLabel = 'View venue', showSlots = false, slotIndex = 0, saved = false, onToggleSaved, autoplayOffsetMs = 0 }) {
   const navigate = useNavigate();
   const reduced = useReducedMotion();
   if (!venue?.id) return null;
@@ -51,7 +51,7 @@ export default function VenueCard({ venue, variant = 'default', actionLabel = 'V
         onKeyDown={onCardKeyDown}
       >
         <div className="hp-venue-image">
-          <VenueCarousel venue={venue} className="h-full" imageClassName="h-full w-full object-cover" alt={venue.name} />
+          <VenueCarousel venue={venue} className="h-full" imageClassName="h-full w-full object-cover" alt={venue.name} autoplayOffsetMs={autoplayOffsetMs} />
           <span className="hp-venue-tag">{sport}</span>
           <button
             type="button"
@@ -105,7 +105,7 @@ export default function VenueCard({ venue, variant = 'default', actionLabel = 'V
       whileHover={reduced ? undefined : { y: -4 }}
     >
       <div className="home-venue-image">
-        <VenueCarousel venue={venue} className="h-full" imageClassName="h-full w-full object-cover" alt={venue.name} />
+        <VenueCarousel venue={venue} className="h-full" imageClassName="h-full w-full object-cover" alt={venue.name} autoplayOffsetMs={autoplayOffsetMs} />
         <span style={{ background: `${sportAccent(sport)}e8` }}>{sport}</span>
         {showSlots && <button type="button" className="home-venue-save" aria-label={`${saved ? 'Unsave' : 'Save'} ${venue.name}`} onClick={onToggleSaved}>{saved ? <Favorite /> : <FavoriteBorder />}</button>}
       </div>

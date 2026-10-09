@@ -5,6 +5,7 @@ import ownerAuthApi from '../api/ownerAuth';
 import ownerVenuesApi from '../api/ownerVenues';
 import ownerCalendarApi from '../api/ownerCalendar';
 import ownerEarningsApi from '../api/ownerEarnings';
+import ownerPortalApi from '../api/ownerPortal';
 import ownerSubscriptionApi from '../api/ownerSubscription';
 import { useAuthStore } from '../stores/authStore';
 import { isOwnerSubscriptionsEnabled, resolvePlans } from '../utils/subscription';
@@ -297,6 +298,181 @@ export const useOwnerPayouts = () =>
   useQuery({
     queryKey: ['owner', 'payouts'],
     queryFn: async () => unwrap(await ownerEarningsApi.listPayouts()),
+  });
+
+export const useOwnerDashboardToday = (options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'dashboard', 'today'],
+    queryFn: async () => unwrap(await ownerPortalApi.getDashboardToday()),
+    staleTime: 30_000,
+    ...options,
+  });
+
+export const useOwnerBookings = (params = {}, options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'bookings', params],
+    queryFn: async () => unwrap(await ownerPortalApi.listBookings(params)),
+    ...options,
+  });
+
+export const useOwnerBooking = (bookingId, options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'bookings', bookingId],
+    queryFn: async () => unwrap(await ownerPortalApi.getBooking(bookingId)),
+    enabled: Boolean(bookingId),
+    ...options,
+  });
+
+export const useOwnerPayments = (params = {}, options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'payments', params],
+    queryFn: async () => unwrap(await ownerPortalApi.listPayments(params)),
+    ...options,
+  });
+
+export const useOwnerRefunds = (params = {}, options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'refunds', params],
+    queryFn: async () => unwrap(await ownerPortalApi.listRefunds(params)),
+    ...options,
+  });
+
+export const useRequestOwnerRefund = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) => ownerPortalApi.requestRefund(data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['owner', 'refunds'] });
+      await queryClient.invalidateQueries({ queryKey: ['owner', 'bookings'] });
+      await queryClient.invalidateQueries({ queryKey: ['owner', 'payments'] });
+      toast.success('Refund requested');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not request refund');
+    },
+  });
+};
+
+export const useOwnerCustomers = (q = '', options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'customers', q],
+    queryFn: async () => unwrap(await ownerPortalApi.listCustomers(q ? { q } : {})),
+    ...options,
+  });
+
+export const useOwnerSports = (options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'sports'],
+    queryFn: async () => unwrap(await ownerPortalApi.listSports()),
+    ...options,
+  });
+
+export const useOwnerPromotions = (options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'promotions'],
+    queryFn: async () => unwrap(await ownerPortalApi.listPromotions()),
+    ...options,
+  });
+
+export const useCreateOwnerPromotion = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) => ownerPortalApi.createPromotion(data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['owner', 'promotions'] });
+      toast.success('Promotion created');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not create promotion');
+    },
+  });
+};
+
+export const useUpdateOwnerPromotion = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ promotionId, data }) => ownerPortalApi.updatePromotion(promotionId, data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['owner', 'promotions'] });
+      toast.success('Promotion updated');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not update promotion');
+    },
+  });
+};
+
+export const useDeleteOwnerPromotion = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (promotionId) => ownerPortalApi.deletePromotion(promotionId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['owner', 'promotions'] });
+      toast.success('Promotion deleted');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not delete promotion');
+    },
+  });
+};
+
+export const useOwnerSettings = (options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'settings'],
+    queryFn: async () => unwrap(await ownerPortalApi.getSettings()),
+    ...options,
+  });
+
+export const useUpdateOwnerSettings = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) => ownerPortalApi.updateSettings(data),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['owner', 'settings'] });
+      toast.success('Settings saved');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not save settings');
+    },
+  });
+};
+
+export const useOwnerReviews = (params = {}, options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'reviews', params],
+    queryFn: async () => unwrap(await ownerPortalApi.listReviews(params)),
+    ...options,
+  });
+
+export const useOwnerActivity = (limit = 20, options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'activity', limit],
+    queryFn: async () => unwrap(await ownerPortalApi.listActivity({ limit })),
+    ...options,
+  });
+
+export const useOwnerCourtPricing = (courtId, options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'courts', courtId, 'pricing'],
+    queryFn: async () => unwrap(await ownerVenuesApi.getPricing(courtId)),
+    enabled: Boolean(courtId),
+    ...options,
+  });
+
+export const useOwnerBlockedSlots = (courtId, options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'blocked-slots', courtId],
+    queryFn: async () => unwrap(await ownerCalendarApi.listBlockedSlots(courtId)),
+    enabled: Boolean(courtId),
+    ...options,
+  });
+
+export const useOwnerMaintenance = (courtId, options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'maintenance', courtId],
+    queryFn: async () => unwrap(await ownerCalendarApi.listMaintenance(courtId)),
+    enabled: Boolean(courtId),
+    ...options,
   });
 
 export const useInvalidateOwner = () => {

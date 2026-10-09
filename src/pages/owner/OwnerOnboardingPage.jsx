@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -12,14 +12,21 @@ import {
 import { toast } from 'sonner';
 import LocationPicker from '../../components/owner/LocationPicker';
 import BookingPolicyForm from '../../components/owner/BookingPolicyForm';
-import { onboardVenue } from '../../api/ownerVenues';
+import { onboardVenue, submitVenue, uploadVenueMedia } from '../../api/ownerVenues';
 import useAuthStore from '../../stores/authStore';
 import {
   DEFAULT_BOOKING_POLICY, bookingPolicyPayload, validateBookingPolicy,
 } from '../../utils/bookingPolicy';
 import { buildResourceNames, resourceLabelForSport } from '../../utils/courtResource';
 
-const STEPS = ['Sports', 'Location', 'Hours', 'Pricing', 'Booking & Cancellation', 'Amenities', 'Rules', 'Preview'];
+const STEPS = ['Sports', 'Location', 'Hours', 'Pricing', 'Booking & Cancellation', 'Amenities', 'Rules', 'Photos', 'Preview'];
+const MAX_VENUE_PHOTOS = 4;
+
+const unwrapVenueId = (response) => {
+  const body = response?.data;
+  const venue = body?.data ?? body;
+  return venue?.id || null;
+};
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const SPORT_CATALOG = [
   { name: 'Indoor Cricket', resource: resourceLabelForSport('Indoor Cricket'), icon: <SportsCricket /> },
@@ -68,6 +75,16 @@ export default function OwnerOnboardingPage() {
   const [dialogQty, setDialogQty] = useState(1);
   const [customSportOpen, setCustomSportOpen] = useState(false);
   const [customSport, setCustomSport] = useState({ name: '', resource: 'Court' });
+  const [photos, setPhotos] = useState([]);
+
+  const photoPreviews = useMemo(
+    () => photos.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [photos],
+  );
+
+  useEffect(() => () => {
+    photoPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+  }, [photoPreviews]);
 
   const venueType = facilities.length > 1 ? 'Multi-sport' : (facilities[0]?.sportName || '');
   const displayedSports = [
@@ -133,7 +150,27 @@ export default function OwnerOnboardingPage() {
     if (step === 2 && hours.filter((h) => !h.closed).some((h) => h.openTime >= h.closeTime)) return 'Open time must be before close time on active operating days';
     if (step === 3 && facilities.some((f) => !Number(pricing[f.sportName]?.price) || Number(pricing[f.sportName]?.price) <= 0)) return 'Set a valid price above 0 for each sport';
     if (step === 4 && validateBookingPolicy(bookingPolicy).length) return validateBookingPolicy(bookingPolicy).join(' ');
+    if (step === 7 && photos.length < 1) return 'Add at least one venue photo';
     return '';
+  };
+
+  const onPhotosSelected = (event) => {
+    const selected = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!selected.length) return;
+    setPhotos((prev) => {
+      const room = MAX_VENUE_PHOTOS - prev.length;
+      if (room <= 0) {
+        setError(`You can upload up to ${MAX_VENUE_PHOTOS} photos`);
+        return prev;
+      }
+      setError('');
+      return [...prev, ...selected.slice(0, room)];
+    });
+  };
+
+  const removePhoto = (index) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const next = () => {
@@ -152,6 +189,11 @@ export default function OwnerOnboardingPage() {
   };
 
   const submit = async () => {
+    if (photos.length < 1) {
+      setError('Add at least one venue photo');
+      setStep(7);
+      return;
+    }
     const msg = validate();
     const policyErrors = validateBookingPolicy(bookingPolicy);
     if (msg || policyErrors.length) {
@@ -160,8 +202,9 @@ export default function OwnerOnboardingPage() {
     }
     setSaving(true);
     setError('');
+    let createdVenueId = null;
     try {
-      await onboardVenue({
+      const onboardRes = await onboardVenue({
         venueType,
         description,
         formattedAddress: location.formattedAddress,
@@ -186,6 +229,24 @@ export default function OwnerOnboardingPage() {
         rulePresets: rules,
         additionalRules,
       });
+      createdVenueId = unwrapVenueId(onboardRes);
+      if (!createdVenueId) {
+        throw new Error('Venue was created but no id was returned');
+      }
+
+      try {
+        await uploadVenueMedia(createdVenueId, photos);
+        await submitVenue(createdVenueId);
+      } catch (publishErr) {
+        await queryClient.invalidateQueries({ queryKey: ['owner', 'venues'] });
+        const publishMsg = publishErr.response?.data?.message
+          || 'Venue was saved as a draft. Open Edit to finish photos and publish.';
+        setError(publishMsg);
+        toast.error(publishMsg);
+        navigate(`/owner/venues/${createdVenueId}/edit`);
+        return;
+      }
+
       toast.success('Venue is live on the landing page');
       await queryClient.invalidateQueries({ queryKey: ['venues'] });
       await queryClient.invalidateQueries({ queryKey: ['sports'] });
@@ -201,7 +262,7 @@ export default function OwnerOnboardingPage() {
         }
       } else {
         const errorData = err.response?.data;
-        const mainMessage = errorData?.message || 'Could not create venue';
+        const mainMessage = errorData?.message || err.message || 'Could not create venue';
 
         if (errorData?.errors) {
           const keys = Object.keys(errorData.errors);
@@ -358,12 +419,69 @@ export default function OwnerOnboardingPage() {
       )}
 
       {step === 7 && (
+        <Stack spacing={2}>
+          <Typography variant="h4">Add venue photos</Typography>
+          <Typography color="text.secondary">
+            Upload at least one photo (up to {MAX_VENUE_PHOTOS}). These appear on search and the venue page.
+          </Typography>
+          <Button variant="outlined" component="label" disabled={photos.length >= MAX_VENUE_PHOTOS}>
+            {photos.length >= MAX_VENUE_PHOTOS ? 'Photo limit reached' : 'Choose photos'}
+            <input
+              hidden
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={onPhotosSelected}
+            />
+          </Button>
+          {photoPreviews.length > 0 && (
+            <Box className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {photoPreviews.map((preview, index) => (
+                <Box key={`${preview.file.name}-${index}`} className="relative overflow-hidden rounded-xl border border-line">
+                  <img
+                    src={preview.url}
+                    alt={preview.file.name}
+                    className="h-32 w-full object-cover"
+                  />
+                  <Button
+                    size="small"
+                    color="error"
+                    className="!absolute !right-1 !top-1 !min-w-0 !bg-white/90"
+                    onClick={() => removePhoto(index)}
+                  >
+                    Remove
+                  </Button>
+                </Box>
+              ))}
+            </Box>
+          )}
+          <Typography variant="caption" color="text.secondary">
+            {photos.length} / {MAX_VENUE_PHOTOS} photos selected
+          </Typography>
+        </Stack>
+      )}
+
+      {step === 8 && (
         <Card className="p-6">
           <Typography variant="h4">{businessName && venueType ? `${businessName} - ${venueType}` : venueType || 'Your venue'}</Typography>
           <Typography className="!mt-1">📍 {location?.formattedAddress}</Typography>
           <Typography className="!mt-2">{facilities.map((f) => f.sportName).join(' · ')}</Typography>
           <Chip label="Live" color="success" className="!mt-2" />
           <Typography variant="h6" className="!mt-4">From LKR {startingPrice ? Number(startingPrice).toLocaleString() : '—'} / hour</Typography>
+          <Typography variant="subtitle2" className="!mt-4">Photos</Typography>
+          <Typography variant="body2">{photos.length} ready to publish</Typography>
+          {photoPreviews.length > 0 && (
+            <Box className="mt-2 flex flex-wrap gap-2">
+              {photoPreviews.map((preview, index) => (
+                <img
+                  key={`preview-${preview.file.name}-${index}`}
+                  src={preview.url}
+                  alt=""
+                  className="h-16 w-16 rounded-lg object-cover"
+                />
+              ))}
+            </Box>
+          )}
           <Typography variant="subtitle2" className="!mt-4">Facilities</Typography>
           {facilities.flatMap((f) => f.courtNames.map((c, i) => (
             <Typography key={`${f.sportName}-${i}`} variant="body2">• {f.sportName}: {c}</Typography>

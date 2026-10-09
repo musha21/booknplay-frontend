@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TextField, Button } from '@mui/material';
 import useAuthStore from '../../stores/authStore';
+import LinkPhonePanel from '../../components/account/LinkPhonePanel';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
@@ -9,7 +10,6 @@ export default function ProfilePage() {
     firstName: customer?.firstName || '',
     lastName: customer?.lastName || '',
     email: customer?.email || '',
-    phone: customer?.phone || '',
   });
 
   const handleSave = (e) => {
@@ -45,13 +45,16 @@ export default function ProfilePage() {
         <TextField
           fullWidth
           label="Phone"
-          value={formData.phone}
-          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          value={customer?.phone || 'Not linked'}
+          disabled
+          helperText="Use the verification panel below to link or change your phone."
         />
         <Button type="submit" variant="contained" className="!bg-navy-900 !px-6 !py-3 !font-bold !text-white hover:!bg-navy-800">
           Save Changes
         </Button>
       </form>
+
+      <LinkPhonePanel currentPhone={customer?.phone || ''} />
     </div>
   );
 }

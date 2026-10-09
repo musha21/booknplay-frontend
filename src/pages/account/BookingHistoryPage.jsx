@@ -1,6 +1,6 @@
 import { Chip, Skeleton } from '@mui/material';
 import { useBookingHistory } from '../../hooks/useBookings';
-import { formatTime } from '../../utils/formatters';
+import { formatBookingTimes } from '../../utils/formatters';
 
 export default function BookingHistoryPage() {
   const { data, isLoading } = useBookingHistory();
@@ -24,7 +24,7 @@ export default function BookingHistoryPage() {
             <div key={b.id} className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
               <div className="min-w-0">
                 <h3 className="customer-card-title truncate">{b.venueName} - {b.courtName}</h3>
-                <p className="customer-body mt-1">{b.date} | {formatTime(b.startTime)} - {formatTime(b.endTime)}</p>
+                <p className="customer-body mt-1">{b.date} | {formatBookingTimes(b)}</p>
               </div>
               <Chip label={b.status} className="!shrink-0 !bg-canvas !font-bold !text-ink" />
             </div>

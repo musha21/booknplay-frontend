@@ -18,16 +18,12 @@ import {
   resolvePlanLimits,
 } from '../../utils/subscription';
 
-const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-
 export default function OwnerCourtsPage() {
   const { venueId } = useParams();
   const { data: courts = [], refetch } = useOwnerCourts(venueId);
   const { data: subscription } = useOwnerSubscription();
   const [open, setOpen] = useState(false);
-  const [pricingCourt, setPricingCourt] = useState(null);
   const [form, setForm] = useState({ name: '', sportId: '', hourlyRate: '2500' });
-  const [rules, setRules] = useState([]);
 
   const subscriptionsEnabled = isOwnerSubscriptionsEnabled();
   const limits = resolvePlanLimits(subscription);
@@ -54,28 +50,6 @@ export default function OwnerCourtsPage() {
     }
   };
 
-  const openPricing = async (court) => {
-    const res = await ownerVenuesApi.getPricing(court.id);
-    const existing = res.data?.data || [];
-    setPricingCourt(court);
-    setRules(existing.length ? existing : DAYS.map((day) => ({
-      dayOfWeek: day,
-      startTime: '06:00:00',
-      endTime: '22:00:00',
-      price: court.hourlyRate,
-    })));
-  };
-
-  const savePricing = async () => {
-    try {
-      await ownerVenuesApi.replacePricing(pricingCourt.id, rules);
-      toast.success('Pricing saved');
-      setPricingCourt(null);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not save pricing');
-    }
-  };
-
   return (
     <Box className="mx-auto max-w-6xl">
       <Stack direction="row" justifyContent="space-between" className="mb-4">
@@ -89,6 +63,7 @@ export default function OwnerCourtsPage() {
         </div>
         <Stack direction="row" spacing={1}>
           <Button component={Link} to={`/owner/venues/${venueId}/calendar`}>Calendar</Button>
+          <Button component={Link} to={`/owner/pricing?venueId=${venueId}`}>Pricing</Button>
           {canAdd ? (
             <Button variant="contained" onClick={() => setOpen(true)}>Add space</Button>
           ) : (
@@ -116,7 +91,7 @@ export default function OwnerCourtsPage() {
           ))}
         </ol>
         <p className="mt-3 text-sm text-muted">
-          A bookable space is the court, pitch, table, or lane customers reserve. Add one, set its price, then open the calendar for walk-ins.
+          A bookable space is the court, pitch, table, or lane customers reserve. Add one, then set Normal, Peak, and Weekend rates on Pricing.
         </p>
       </div>
 
@@ -124,7 +99,7 @@ export default function OwnerCourtsPage() {
         <div className="mb-6 rounded-2xl border border-dashed border-line p-6 text-center">
           <p className="text-lg font-black text-ink">Add your first bookable space</p>
           <p className="mt-2 text-sm text-muted">
-            Without a space, the calendar has nothing to sell. Create one space, then set peak/off-peak pricing.
+            Without a space, the calendar has nothing to sell. Create one space, then configure pricing.
           </p>
           {canAdd && (
             <Button className="!mt-4" variant="contained" color="secondary" onClick={() => setOpen(true)}>
@@ -137,12 +112,20 @@ export default function OwnerCourtsPage() {
       <Stack spacing={2}>
         {courts.map((court) => (
           <Card key={court.id}>
-            <CardContent className="flex items-center justify-between">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <Typography variant="h6">{court.name}</Typography>
-                <Typography variant="body2">{resourceLabelForCourt(court)} · {court.sportName} · LKR {court.hourlyRate} / hour · {court.status}</Typography>
+                <Typography variant="body2">
+                  {resourceLabelForCourt(court)} · {court.sportName} · LKR {court.hourlyRate} / hour · {court.status}
+                </Typography>
               </div>
-              <Button onClick={() => openPricing(court)}>Peak / off-peak pricing</Button>
+              <Button
+                component={Link}
+                to={`/owner/pricing?venueId=${venueId}&courtId=${court.id}`}
+                variant="outlined"
+              >
+                Set pricing
+              </Button>
             </CardContent>
           </Card>
         ))}
@@ -162,45 +145,6 @@ export default function OwnerCourtsPage() {
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={createCourt}>Create</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={Boolean(pricingCourt)} onClose={() => setPricingCourt(null)} fullWidth maxWidth="md">
-        <DialogTitle>Pricing grid — {pricingCourt?.name}</DialogTitle>
-        <DialogContent className="flex flex-col gap-3 !pt-2">
-          {rules.map((rule, idx) => (
-            <Stack key={`${rule.dayOfWeek}-${idx}`} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-              <TextField select label="Day" value={rule.dayOfWeek} onChange={(e) => {
-                const next = [...rules];
-                next[idx] = { ...rule, dayOfWeek: e.target.value };
-                setRules(next);
-              }} sx={{ minWidth: 140 }}>
-                {DAYS.map((day) => <MenuItem key={day} value={day}>{day}</MenuItem>)}
-              </TextField>
-              <TextField type="time" label="Start" value={String(rule.startTime).slice(0, 5)} onChange={(e) => {
-                const next = [...rules];
-                next[idx] = { ...rule, startTime: `${e.target.value}:00` };
-                setRules(next);
-              }} />
-              <TextField type="time" label="End" value={String(rule.endTime).slice(0, 5)} onChange={(e) => {
-                const next = [...rules];
-                next[idx] = { ...rule, endTime: `${e.target.value}:00` };
-                setRules(next);
-              }} />
-              <TextField type="number" label="Price" value={rule.price} onChange={(e) => {
-                const next = [...rules];
-                next[idx] = { ...rule, price: Number(e.target.value) };
-                setRules(next);
-              }} />
-            </Stack>
-          ))}
-          <Button onClick={() => setRules([...rules, { dayOfWeek: 'SATURDAY', startTime: '18:00:00', endTime: '22:00:00', price: 3500 }])}>
-            Add weekend / peak band
-          </Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPricingCourt(null)}>Cancel</Button>
-          <Button variant="contained" onClick={savePricing}>Save pricing</Button>
         </DialogActions>
       </Dialog>
     </Box>

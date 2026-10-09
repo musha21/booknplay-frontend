@@ -17,3 +17,7 @@ export const getCourtsByVenue = (venueId) => get(`/public/venues/${venueId}/cour
 
 export const getAvailability = (courtId, date) =>
   get('/public/availability', { params: { courtId, date } });
+
+export const getVenueReviews = (venueId) => get(`/public/venues/${venueId}/reviews`);
+
+export const getPublicPromotions = () => get('/public/promotions');

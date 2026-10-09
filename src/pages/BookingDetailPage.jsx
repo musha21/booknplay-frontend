@@ -13,7 +13,7 @@ import {
 import {
   downloadInvoicePdf
 } from '../api/payments';
-import { formatCurrency, formatTime } from '../utils/formatters';
+import { formatBookingTimes, formatCurrency } from '../utils/formatters';
 import { resourceLabelForCourt } from '../utils/courtResource';
 import { toast } from 'sonner';
 
@@ -105,6 +105,10 @@ export default function BookingDetailPage() {
               <span className="text-base font-bold text-ink">{booking.venueName}</span>
             </div>
             <div>
+              <span className="block text-xs text-muted">Sport</span>
+              <span className="text-base font-bold text-ink">{booking.sportName || '—'}</span>
+            </div>
+            <div>
               <span className="block text-xs text-muted">{resourceLabel}</span>
               <span className="text-base font-bold text-ink">{booking.courtName}</span>
             </div>
@@ -112,10 +116,10 @@ export default function BookingDetailPage() {
               <span className="block text-xs text-muted">Date</span>
               <span className="text-base font-bold text-ink">{booking.date}</span>
             </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1">
               <span className="block text-xs text-muted">Time</span>
               <span className="text-base font-bold text-ink">
-                {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
+                {formatBookingTimes(booking)}
               </span>
             </div>
           </div>

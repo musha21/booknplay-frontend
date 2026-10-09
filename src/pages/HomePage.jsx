@@ -4,6 +4,7 @@ import { Bolt, CalendarMonth, Verified } from '@mui/icons-material';
 import { useBusinesses, useHomepageConfig, useSports, useVenues } from '../hooks/useVenues';
 import BookingHeroFallback from '../components/home/BookingHeroFallback';
 import CityDestinationCard from '../components/home/CityDestinationCard';
+import PublicPromotionsStrip from '../components/home/PublicPromotionsStrip';
 import VenueShowcase from '../components/home/VenueShowcase';
 import MobileAppBanner from '../components/home/MobileAppBanner';
 import { SportCategoryGrid } from '../components/home/SportCategoryButton';
@@ -13,6 +14,7 @@ import { MAIN_SPORT_FALLBACKS, MAIN_SPORT_PRIORITY, curateMainSports } from '../
 import { buildVenueQuery, buildVenueSearchParams, LAUNCH_CITY } from '../utils/searchParams';
 import mediaUrl from '../utils/mediaUrl';
 import { venueCover, venueSportLabel } from '../utils/venue';
+import { readRecentlyViewed } from '../utils/recentlyViewed';
 
 const slideInWindow = (slide) => {
   const today = new Date().toISOString().slice(0, 10);
@@ -94,16 +96,8 @@ export default function HomePage() {
   const date = urlParams.get('date') || '';
   const time = urlParams.get('time') || '';
   const [businessId, setBusinessId] = useState('');
-  const [premiumTrigger, setPremiumTrigger] = useState('hover');
   const sportsQuery = useSports();
   useBusinesses();
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 800px)');
-    const sync = () => setPremiumTrigger(media.matches ? 'click' : 'hover');
-    sync();
-    media.addEventListener('change', sync);
-    return () => media.removeEventListener('change', sync);
-  }, []);
   const venueParams = useMemo(
     () => buildVenueQuery({ city, date, time, size: HOME_VENUE_SIZE }),
     [city, date, time],
@@ -201,9 +195,14 @@ export default function HomePage() {
   const applySearch = (filters) => {
     setBusinessId('');
     const params = buildVenueSearchParams(filters);
-    navigate({ pathname: '/', search: `?${params.toString()}`, hash: '#venues' });
-    scrollToVenues();
+    navigate({ pathname: '/search', search: `?${params.toString()}` });
   };
+
+  const recentIds = useMemo(() => readRecentlyViewed(), []);
+  const recentVenues = useMemo(
+    () => recentIds.map((id) => venues.find((venue) => String(venue.id) === String(id))).filter(Boolean),
+    [recentIds, venues],
+  );
 
   const clearFilters = () => applySearch({ sportId: '', city: '', date: '', time: '' });
 
@@ -236,11 +235,17 @@ export default function HomePage() {
           </div>
           <SportCategoryGrid sports={displaySports} sportId={sportId} venueCounts={venueCounts} onSelect={(sport) => {
             const nextSportId = String(sportId) === String(sport.id) ? '' : sport.id;
-            setBusinessId('');
-            updateVenueUrl({ sportId: nextSportId, city, date, time });
-            scrollToVenues();
+            applySearch({ sportId: nextSportId, city, date, time });
           }} />
         </section>
+      )}
+
+      <PublicPromotionsStrip />
+
+      {recentVenues.length > 0 && (
+        <div style={{ order: orderOf('venues') }}>
+          <VenueShowcase venues={recentVenues} heading="Recently viewed" />
+        </div>
       )}
 
       {premiumAccordionItems.length > 0 && (
@@ -258,9 +263,11 @@ export default function HomePage() {
             overlayColor="#061032"
             textColor="#ffffff"
             grayscale
-            trigger={premiumTrigger}
+            trigger="click"
             height={420}
             defaultIndex={0}
+            autoPlay={homepage.premiumSliderAutoplay !== false}
+            autoPlayInterval={(homepage.premiumSliderSeconds ? Math.max(2, homepage.premiumSliderSeconds) : 3) * 1000}
             onItemActivate={(item) => {
               if (item?.businessId) showBusinessVenues({ businessId: item.businessId });
             }}
@@ -300,7 +307,7 @@ export default function HomePage() {
                 key={place.city}
                 city={place.city}
                 count={place.count}
-                onSelect={clearFilters}
+                onSelect={() => applySearch({ city: place.city, location: place.city })}
               />
             ))}
           </div>

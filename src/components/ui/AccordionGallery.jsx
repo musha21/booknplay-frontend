@@ -29,8 +29,12 @@ const AccordionGallery = ({
   stagger = 0.06,
   trigger = 'hover',
   showLabels = true,
+  showIndicators = true,
   grayscale = true,
   className = '',
+  autoPlay = false,
+  autoPlayInterval = 3000,
+  pauseOnHover: _pauseOnHover = true,
   onItemActivate,
 }) => {
   const rootRef = useRef(null);
@@ -41,15 +45,85 @@ const AccordionGallery = ({
   const tlRef = useRef(null);
   const firstRunRef = useRef(true);
   const mediaSizeRef = useRef(320);
+  const resumeTimerRef = useRef(null);
 
-  const vertical = orientation === 'vertical';
+  const [isSmallScreen, setIsSmallScreen] = useState(
+    typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(max-width: 520px)').matches : false
+  );
+  const [isVisible, setIsVisible] = useState(true);
+  const [pageVisible, setPageVisible] = useState(
+    typeof document === 'undefined' ? true : !document.hidden
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mql = window.matchMedia('(max-width: 520px)');
+    const updateScreen = () => setIsSmallScreen(mql.matches);
+    updateScreen();
+    mql.addEventListener('change', updateScreen);
+    return () => mql.removeEventListener('change', updateScreen);
+  }, []);
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.15 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const onVisibility = () => setPageVisible(!document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  const isVertical = orientation === 'vertical' || isSmallScreen;
   const count = items.length;
-  const [active, setActive] = useState(Math.min(Math.max(defaultIndex, 0), count - 1));
-
-  const prefersReduced =
+  const [active, setActive] = useState(Math.min(Math.max(defaultIndex, 0), Math.max(count - 1, 0)));
+  const [isPaused, setIsPaused] = useState(false);
+  const [prefersReduced, setPrefersReduced] = useState(
     typeof window !== 'undefined' && window.matchMedia
       ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      : false;
+      : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => setPrefersReduced(mql.matches);
+    sync();
+    mql.addEventListener('change', sync);
+    return () => mql.removeEventListener('change', sync);
+  }, []);
+
+  const canHover =
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(hover: hover)').matches
+      : true;
+
+  const pauseTemporarily = useCallback((duration = autoPlayInterval) => {
+    setIsPaused(true);
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    resumeTimerRef.current = setTimeout(() => {
+      setIsPaused(false);
+    }, duration);
+  }, [autoPlayInterval]);
+
+  useEffect(
+    () => () => {
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    },
+    []
+  );
+
+  const hoverActivates = trigger === 'hover' && canHover && !autoPlay;
 
   const applyLayout = useCallback(
     animate => {
@@ -72,7 +146,7 @@ const AccordionGallery = ({
         const text = textRefs.current[i];
 
         const rot = isActive ? 0 : i < active ? tilt : -tilt;
-        const rotProp = vertical ? { rotateX: -rot } : { rotateY: rot };
+        const rotProp = isVertical ? { rotateX: -rot } : { rotateY: rot };
 
         tl.to(panel, { flexGrow: isActive ? grow : 1, ...rotProp, duration: dur, ease }, 0);
 
@@ -85,8 +159,8 @@ const AccordionGallery = ({
             {
               xPercent: -50,
               yPercent: -50,
-              x: vertical ? 0 : isActive ? 0 : shift,
-              y: vertical ? (isActive ? 0 : shift) : 0,
+              x: isVertical ? 0 : isActive ? 0 : shift,
+              y: isVertical ? (isActive ? 0 : shift) : 0,
               '--ag-gray': gray,
               '--ag-dim': isActive ? 0 : 0.35,
               duration: dur,
@@ -113,7 +187,7 @@ const AccordionGallery = ({
       expandRatio,
       duration,
       ease,
-      vertical,
+      isVertical,
       tilt,
       parallax,
       grayscale,
@@ -129,7 +203,7 @@ const AccordionGallery = ({
 
     const measure = () => {
       const rect = el.getBoundingClientRect();
-      const total = vertical ? rect.height : rect.width;
+      const total = isVertical ? rect.height : rect.width;
       const usable = Math.max(total - gap * (count - 1), 120);
       const size = Math.max(140, usable * Math.min(Math.max(expandRatio, 0.2), 0.9) * 1.22);
       mediaSizeRef.current = size;
@@ -141,7 +215,7 @@ const AccordionGallery = ({
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [applyLayout, gap, count, expandRatio, vertical]);
+  }, [applyLayout, gap, count, expandRatio, isVertical]);
 
   useEffect(() => {
     applyLayout(!firstRunRef.current);
@@ -155,11 +229,24 @@ const AccordionGallery = ({
     []
   );
 
+  useEffect(() => {
+    if (!autoPlay || count <= 1 || isPaused || prefersReduced || !isVisible || !pageVisible) return undefined;
+
+    const intervalId = setInterval(() => {
+      setActive(prev => (prev + 1) % count);
+    }, Math.max(1000, autoPlayInterval));
+
+    return () => clearInterval(intervalId);
+  }, [autoPlay, autoPlayInterval, count, isPaused, prefersReduced, isVisible, pageVisible]);
+
   const handleEnter = i => {
-    if (trigger === 'hover') setActive(i);
+    if (hoverActivates) setActive(i);
   };
 
   const handleClick = (i, e) => {
+    if (autoPlay) {
+      pauseTemporarily(Math.max(4000, autoPlayInterval));
+    }
     if (i !== active) {
       e.preventDefault();
       setActive(i);
@@ -172,6 +259,9 @@ const AccordionGallery = ({
   };
 
   const handleKeyDown = (i, e) => {
+    if (autoPlay) {
+      pauseTemporarily(Math.max(4000, autoPlayInterval));
+    }
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault();
       setActive((i + 1) % count);
@@ -182,56 +272,85 @@ const AccordionGallery = ({
   };
 
   return (
-    <div
-      ref={rootRef}
-      className={`accordion-gallery${vertical ? ' accordion-gallery--vertical' : ''}${className ? ` ${className}` : ''}`}
-      style={{
-        '--ag-accent': accentColor,
-        '--ag-overlay': overlayColor,
-        '--ag-text': textColor,
-        '--ag-gap': `${gap}px`,
-        '--ag-radius': `${radius}px`,
-        height: vertical ? `${Math.round(height * 1.6)}px` : `${height}px`
-      }}
-      role="list"
-      aria-label="Image accordion gallery"
-    >
-      {items.map((item, i) => {
-        const isActive = i === active;
-        const Tag = item.link ? 'a' : 'div';
-        return (
-          <Tag
-            key={i}
-            ref={el => (panelRefs.current[i] = el)}
-            className={`ag-panel${isActive ? ' ag-panel--active' : ''}`}
-            style={{ borderRadius: `${radius}px` }}
-            href={item.link || undefined}
-            onClick={e => handleClick(i, e)}
-            onMouseEnter={() => handleEnter(i)}
-            onFocus={() => setActive(i)}
-            onKeyDown={e => handleKeyDown(i, e)}
-            role="listitem"
-            tabIndex={0}
-            aria-current={isActive ? 'true' : undefined}
-            aria-label={item.label}
-          >
-            <span className="ag-panel__frame">
-              <span className="ag-panel__media" ref={el => (mediaRefs.current[i] = el)}>
-                <img src={item.image} alt={item.alt || item.label || ''} draggable="false" />
-              </span>
-              <span className="ag-panel__overlay" aria-hidden="true" />
-            </span>
-            {showLabels && (
-              <span className="ag-panel__label" aria-hidden="true">
-                <span className="ag-panel__bar" ref={el => (barRefs.current[i] = el)} />
-                <span className="ag-panel__text" ref={el => (textRefs.current[i] = el)}>
-                  {item.label}
+    <div className={`accordion-gallery-wrapper${className ? ` ${className}` : ''}`}>
+      <div
+        ref={rootRef}
+        className={`accordion-gallery${isVertical ? ' accordion-gallery--vertical' : ''}`}
+        style={{
+          '--ag-accent': accentColor,
+          '--ag-overlay': overlayColor,
+          '--ag-text': textColor,
+          '--ag-gap': `${gap}px`,
+          '--ag-radius': `${radius}px`,
+          height: isVertical ? `${Math.round(height * 1.6)}px` : `${height}px`
+        }}
+        role="list"
+        aria-label="Image accordion gallery"
+      >
+        {items.map((item, i) => {
+          const isActive = i === active;
+          const Tag = item.link ? 'a' : 'div';
+          return (
+            <Tag
+              key={i}
+              ref={el => (panelRefs.current[i] = el)}
+              className={`ag-panel${isActive ? ' ag-panel--active' : ''}`}
+              style={{ borderRadius: `${radius}px` }}
+              href={item.link || undefined}
+              onClick={e => handleClick(i, e)}
+              onMouseEnter={() => handleEnter(i)}
+              onFocus={() => {
+                if (hoverActivates) setActive(i);
+              }}
+              onKeyDown={e => handleKeyDown(i, e)}
+              role="listitem"
+              tabIndex={0}
+              aria-current={isActive ? 'true' : undefined}
+              aria-label={item.label}
+            >
+              <span className="ag-panel__frame">
+                <span className="ag-panel__media" ref={el => (mediaRefs.current[i] = el)}>
+                  <img
+                    src={item.image}
+                    alt={item.alt || item.label || ''}
+                    loading={i === active || i === (active + 1) % count ? 'eager' : 'lazy'}
+                    decoding="async"
+                    draggable="false"
+                  />
                 </span>
+                <span className="ag-panel__overlay" aria-hidden="true" />
               </span>
-            )}
-          </Tag>
-        );
-      })}
+              {showLabels && (
+                <span className="ag-panel__label" aria-hidden="true">
+                  <span className="ag-panel__bar" ref={el => (barRefs.current[i] = el)} />
+                  <span className="ag-panel__text" ref={el => (textRefs.current[i] = el)}>
+                    {item.label}
+                  </span>
+                </span>
+              )}
+            </Tag>
+          );
+        })}
+      </div>
+
+      {showIndicators && count > 1 && (
+        <div className="ag-indicators" role="tablist" aria-label="Slide indicators">
+          {items.map((item, i) => (
+            <button
+              key={i}
+              type="button"
+              className={`ag-indicator-dot${i === active ? ' ag-indicator-dot--active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (autoPlay) pauseTemporarily(Math.max(4000, autoPlayInterval));
+                setActive(i);
+              }}
+              aria-label={`Go to slide ${i + 1}: ${item.label || ''}`}
+              aria-selected={i === active}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

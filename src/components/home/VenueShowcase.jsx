@@ -7,40 +7,40 @@ import { toast } from 'sonner';
 import EmptyState from '../ui/EmptyState';
 import VenueCard from '../ui/VenueCard';
 import useAuthStore from '../../stores/authStore';
+import useFavoritesStore from '../../stores/favoritesStore';
 import { staggerContainer } from '../../motion/variants';
 
-export default function VenueShowcase({ venues = [], loading, error, onRetry, onClear, city = 'Kandy' }) {
+export default function VenueShowcase({ venues = [], loading, error, onRetry, onClear, city = 'Kandy', heading }) {
   const reduced = useReducedMotion();
   const navigate = useNavigate();
   const location = useLocation();
   const isCustomer = useAuthStore((state) => state.isAuthenticated && state.role === 'CUSTOMER');
-  const [savedIds, setSavedIds] = useState([]);
+  const savedIds = useFavoritesStore((state) => state.savedVenueIds);
+  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
   const [savedOnly, setSavedOnly] = useState(false);
 
-  const toggleSaved = (venueId) => {
+  const toggleSaved = (venue) => {
     if (!isCustomer) {
       toast.info('Sign in to save venues');
       navigate('/auth/login', { state: { from: location, reason: 'favourite' } });
       return;
     }
-    setSavedIds((current) => (
-      current.includes(venueId) ? current.filter((id) => id !== venueId) : [...current, venueId]
-    ));
+    toggleFavorite(venue.id, venue.name);
   };
 
   const visible = useMemo(
-    () => (savedOnly ? venues.filter((venue) => savedIds.includes(venue.id)) : venues),
+    () => (savedOnly ? venues.filter((venue) => savedIds.some((id) => String(id) === String(venue.id))) : venues),
     [venues, savedOnly, savedIds],
   );
 
   const displayCity = city || 'Kandy';
 
   return (
-    <section id="venues" className="hp-section hp-venues scroll-mt-24">
+    <section id={heading ? 'recent-venues' : 'venues'} className="hp-section hp-venues scroll-mt-24">
       <div className="hp-section-head">
         <div>
           <p className="hp-kicker">Available near you</p>
-          <h2>Play today in {displayCity}.</h2>
+          <h2>{heading || `Play today in ${displayCity}.`}</h2>
         </div>
         <div>
           <p className="hp-section-note">Places ready for your next game.</p>
@@ -70,14 +70,15 @@ export default function VenueShowcase({ venues = [], loading, error, onRetry, on
             />
           ) : (
             <motion.div className="hp-venue-grid" variants={reduced ? undefined : staggerContainer(0.07)} initial={reduced ? false : 'hidden'} animate={reduced ? undefined : 'show'}>
-              {visible.map((venue) => (
+              {visible.map((venue, index) => (
                 <VenueCard
                   key={venue.id}
                   venue={venue}
                   variant="home"
                   actionLabel="View slots"
-                  saved={savedIds.includes(venue.id)}
-                  onToggleSaved={() => toggleSaved(venue.id)}
+                  saved={savedIds.some((id) => String(id) === String(venue.id))}
+                  onToggleSaved={() => toggleSaved(venue)}
+                  autoplayOffsetMs={index * 400}
                 />
               ))}
             </motion.div>

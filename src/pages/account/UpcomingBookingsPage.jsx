@@ -2,7 +2,7 @@ import { Button, Skeleton } from '@mui/material';
 import { ArrowForward, EventNote } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useUpcomingBookings } from '../../hooks/useBookings';
-import { formatTime } from '../../utils/formatters';
+import { formatBookingTimes } from '../../utils/formatters';
 
 export default function UpcomingBookingsPage() {
   const navigate = useNavigate();
@@ -30,7 +30,7 @@ export default function UpcomingBookingsPage() {
             <div key={b.id} className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
               <div className="min-w-0">
                 <h3 className="customer-card-title truncate">{b.venueName} - {b.courtName}</h3>
-                <p className="customer-body mt-1">{b.date} | {formatTime(b.startTime)} - {formatTime(b.endTime)}</p>
+                <p className="customer-body mt-1">{b.date} | {formatBookingTimes(b)}</p>
               </div>
               <Button
                 variant="outlined"
