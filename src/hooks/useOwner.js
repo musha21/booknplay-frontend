@@ -300,6 +300,20 @@ export const useOwnerPayouts = () =>
     queryFn: async () => unwrap(await ownerEarningsApi.listPayouts()),
   });
 
+export const useOwnerPayoutSummary = () =>
+  useQuery({
+    queryKey: ['owner', 'payouts', 'summary'],
+    queryFn: async () => unwrap(await ownerEarningsApi.getPayoutSummary()),
+  });
+
+export const useOwnerPayoutDetail = (payoutId, options = {}) =>
+  useQuery({
+    queryKey: ['owner', 'payouts', payoutId],
+    queryFn: async () => unwrap(await ownerEarningsApi.getPayoutDetail(payoutId)),
+    enabled: Boolean(payoutId),
+    ...options,
+  });
+
 export const useOwnerDashboardToday = (options = {}) =>
   useQuery({
     queryKey: ['owner', 'dashboard', 'today'],

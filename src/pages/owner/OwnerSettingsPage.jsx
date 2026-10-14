@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { FormControlLabel, Skeleton, Switch, TextField } from '@mui/material';
+import {
+  FormControl, FormControlLabel, InputLabel, MenuItem, Select, Skeleton, Switch, TextField,
+} from '@mui/material';
 import {
   OwnerPage, OwnerPageHeader, OwnerSection, OwnerTabBar,
 } from '../../components/owner/OwnerDashboardUi';
@@ -10,6 +12,17 @@ import {
   useUpdateOwnerSettings,
 } from '../../hooks/useOwner';
 import useAuthStore from '../../stores/authStore';
+
+const verificationLabel = (status) => {
+  switch (status) {
+    case 'VERIFIED':
+      return 'Verified';
+    case 'PENDING_REVIEW':
+      return 'Pending review';
+    default:
+      return 'Unverified';
+  }
+};
 
 export default function OwnerSettingsPage() {
   const role = useAuthStore((s) => s.role);
@@ -32,11 +45,13 @@ export default function OwnerSettingsPage() {
     bankAccountName: '',
     bankAccountNumber: '',
     bankBranch: '',
+    payoutFrequency: 'WEEKLY',
     notifyBookingEmail: true,
     notifyBookingSms: false,
     notifyPaymentEmail: true,
     notifyTrialEmail: true,
   });
+  const [accountDirty, setAccountDirty] = useState(false);
 
   useEffect(() => {
     if (!settings) return;
@@ -45,13 +60,15 @@ export default function OwnerSettingsPage() {
       contactPhone: settings.contactPhone || '',
       bankName: settings.bankName || '',
       bankAccountName: settings.bankAccountName || '',
-      bankAccountNumber: settings.bankAccountNumber || '',
+      bankAccountNumber: '',
       bankBranch: settings.bankBranch || '',
+      payoutFrequency: settings.payoutFrequency || 'WEEKLY',
       notifyBookingEmail: settings.notifyBookingEmail !== false,
       notifyBookingSms: Boolean(settings.notifyBookingSms),
       notifyPaymentEmail: settings.notifyPaymentEmail !== false,
       notifyTrialEmail: settings.notifyTrialEmail !== false,
     });
+    setAccountDirty(false);
   }, [settings]);
 
   const setField = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
@@ -59,18 +76,22 @@ export default function OwnerSettingsPage() {
 
   const save = () => {
     if (isStaff && tab === 'bank') return;
-    updateSettings.mutate({
+    const payload = {
       contactEmail: form.contactEmail || null,
       contactPhone: form.contactPhone || null,
       bankName: form.bankName || null,
       bankAccountName: form.bankAccountName || null,
-      bankAccountNumber: form.bankAccountNumber || null,
       bankBranch: form.bankBranch || null,
+      payoutFrequency: form.payoutFrequency || 'WEEKLY',
       notifyBookingEmail: form.notifyBookingEmail,
       notifyBookingSms: form.notifyBookingSms,
       notifyPaymentEmail: form.notifyPaymentEmail,
       notifyTrialEmail: form.notifyTrialEmail,
-    });
+    };
+    if (accountDirty && form.bankAccountNumber.trim()) {
+      payload.bankAccountNumber = form.bankAccountNumber.trim();
+    }
+    updateSettings.mutate(payload);
   };
 
   const payouts = Array.isArray(payoutsQuery.data) ? payoutsQuery.data : [];
@@ -126,16 +147,55 @@ export default function OwnerSettingsPage() {
           {tab === 'bank' && !isStaff && (
             <div className="space-y-6">
               <div className="surface-card space-y-4 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm text-muted">
+                    Account on file:{' '}
+                    <strong className="text-ink">{settings?.bankAccountNumberMasked || '—'}</strong>
+                  </p>
+                  <span className="rounded-full border border-line px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-ink">
+                    {verificationLabel(settings?.bankVerificationStatus)}
+                  </span>
+                </div>
+                <p className="text-xs text-muted">
+                  Changing bank details requires platform admin re-verification before the next payout.
+                </p>
                 <TextField fullWidth size="small" label="Bank name" value={form.bankName} onChange={setField('bankName')} />
                 <TextField fullWidth size="small" label="Account name" value={form.bankAccountName} onChange={setField('bankAccountName')} />
-                <TextField fullWidth size="small" label="Account number" value={form.bankAccountNumber} onChange={setField('bankAccountNumber')} />
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Account number"
+                  placeholder={settings?.bankAccountNumberMasked ? `Leave blank to keep ${settings.bankAccountNumberMasked}` : 'Enter account number'}
+                  value={form.bankAccountNumber}
+                  onChange={(e) => {
+                    setAccountDirty(true);
+                    setForm((prev) => ({ ...prev, bankAccountNumber: e.target.value }));
+                  }}
+                />
                 <TextField fullWidth size="small" label="Branch" value={form.bankBranch} onChange={setField('bankBranch')} />
+                <FormControl fullWidth size="small">
+                  <InputLabel id="payout-frequency-label">Payout frequency</InputLabel>
+                  <Select
+                    labelId="payout-frequency-label"
+                    label="Payout frequency"
+                    value={form.payoutFrequency}
+                    onChange={setField('payoutFrequency')}
+                  >
+                    <MenuItem value="WEEKLY">Weekly</MenuItem>
+                    <MenuItem value="MONTHLY">Monthly</MenuItem>
+                  </Select>
+                </FormControl>
                 <button type="button" className="btn-primary" disabled={updateSettings.isPending} onClick={save}>
                   Save payout details
                 </button>
               </div>
               <div>
-                <h3 className="text-lg font-black text-ink">Payout history</h3>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-black text-ink">Payout history</h3>
+                  <RouterLink to="/owner/earnings" className="text-sm font-bold text-ink underline">
+                    Open earnings
+                  </RouterLink>
+                </div>
                 {payouts.length === 0 ? (
                   <p className="mt-2 text-sm text-muted">No payouts recorded yet.</p>
                 ) : (

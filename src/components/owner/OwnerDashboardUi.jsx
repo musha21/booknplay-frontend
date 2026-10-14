@@ -181,6 +181,7 @@ export function OwnerDialog({
   maxWidth = 'sm',
 }) {
   const reduced = useReducedMotion();
+  const hasBody = children != null && children !== false;
   return (
     <Dialog
       open={open}
@@ -190,12 +191,14 @@ export function OwnerDialog({
       fullScreen={fullScreenMobile ? undefined : false}
       sx={{
         '& .MuiDialog-paper': {
-          borderRadius: { xs: fullScreenMobile ? 0 : 4, sm: 4 },
+          borderRadius: { xs: fullScreenMobile ? 0 : '16px', sm: '16px' },
           m: { xs: fullScreenMobile ? 0 : 2, sm: 3 },
           width: { xs: fullScreenMobile ? '100%' : 'calc(100% - 32px)', sm: undefined },
           maxHeight: { xs: fullScreenMobile ? '100%' : 'calc(100% - 32px)', sm: 'calc(100% - 64px)' },
+          overflow: 'hidden',
           bgcolor: 'background.paper',
           backgroundImage: 'none',
+          boxShadow: '0 24px 48px rgba(9, 38, 54, 0.16)',
         },
         ...(fullScreenMobile ? {
           '& .MuiDialog-container': {
@@ -213,13 +216,19 @@ export function OwnerDialog({
         },
       }}
     >
-      <DialogTitle className="!pb-1 !pt-5 !text-xl !font-black !tracking-[-0.02em] !text-ink">{title}</DialogTitle>
+      <DialogTitle className="!px-5 !pb-2 !pt-5 !text-balance !break-words !text-lg !font-black !leading-snug !tracking-[-0.02em] !text-ink sm:!px-6 sm:!text-xl">
+        {title}
+      </DialogTitle>
       {description && (
-        <p className="px-6 text-sm leading-6 text-muted">{description}</p>
+        <p className={`px-5 text-pretty text-sm leading-6 text-muted sm:px-6 ${hasBody ? 'pb-1' : 'pb-5'}`}>
+          {description}
+        </p>
       )}
-      <DialogContent className="!pt-4">{children}</DialogContent>
+      {hasBody && (
+        <DialogContent className="!px-5 !pt-3 sm:!px-6">{children}</DialogContent>
+      )}
       {actions && (
-        <DialogActions className="!flex-col-reverse !items-stretch !gap-2 !px-6 !pb-5 !pt-2 sm:!flex-row sm:!justify-end">
+        <DialogActions className="!m-0 !flex-col-reverse !items-stretch !gap-2 !border-0 !px-5 !pb-5 !pt-0 sm:!flex-row sm:!items-center sm:!justify-end sm:!px-6 sm:!pb-6">
           {actions}
         </DialogActions>
       )}
@@ -244,6 +253,7 @@ export function OwnerConfirmDialog({
         <OwnerDialog
           open={open}
           onClose={loading ? undefined : onClose}
+          maxWidth="xs"
           title={title}
           description={description}
           actions={(
@@ -252,7 +262,7 @@ export function OwnerConfirmDialog({
                 type="button"
                 disabled={loading}
                 onClick={onClose}
-                className="btn-outline min-h-11 w-full sm:w-auto"
+                className="btn-outline min-h-11 w-full shrink-0 sm:w-auto"
               >
                 {cancelLabel}
               </button>
@@ -260,10 +270,10 @@ export function OwnerConfirmDialog({
                 type="button"
                 disabled={loading}
                 onClick={onConfirm}
-                className={`inline-flex min-h-11 w-full items-center justify-center rounded-xl px-5 text-sm font-bold sm:w-auto ${
+                className={`inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl px-5 text-sm font-bold shadow-sm sm:w-auto ${
                   danger
-                    ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'bg-lime-400 text-navy-900 hover:bg-lime-300'
+                    ? 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-400'
+                    : 'bg-lime-400 text-navy-900 hover:bg-lime-300 disabled:bg-lime-200'
                 }`}
               >
                 {loading ? 'Working…' : confirmLabel}

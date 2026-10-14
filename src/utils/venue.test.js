@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sportAccent, sportIcon, venueDisplayAddress, venueGoogleMapsUrl, venueOperatorName, venueSportLabel } from './venue';
+import { facilityLabel, matchingCourts, sportAccent, sportIcon, venueDisplayAddress, venueGoogleMapsUrl, venueMatchingPrice, venueOperatorName, venueSportLabel } from './venue';
 import {
   Casino,
   Pool,
@@ -75,6 +75,66 @@ describe('venueOperatorName', () => {
     expect(venueOperatorName({ business: { name: 'Kandy Arena Group' } })).toBe('Kandy Arena Group');
     expect(venueOperatorName({})).toBe('');
     expect(venueOperatorName(null)).toBe('');
+  });
+});
+
+describe('facilityLabel', () => {
+  it('maps the backend enum values to display text, case-insensitively', () => {
+    expect(facilityLabel('INDOOR')).toBe('Indoor');
+    expect(facilityLabel('outdoor')).toBe('Outdoor');
+    expect(facilityLabel('')).toBe('');
+    expect(facilityLabel(null)).toBe('');
+    expect(facilityLabel('ROOFTOP')).toBe('ROOFTOP');
+  });
+});
+
+describe('matchingCourts', () => {
+  const venue = {
+    courts: [
+      { sportId: 'cricket', facilityType: 'INDOOR', hourlyRate: 3000, status: 'ACTIVE' },
+      { sportId: 'cricket', facilityType: 'OUTDOOR', hourlyRate: 2000, status: 'ACTIVE' },
+      { sportId: 'carrom', facilityType: 'INDOOR', hourlyRate: 800, status: 'ACTIVE' },
+      { sportId: 'cricket', facilityType: 'INDOOR', hourlyRate: 9999, status: 'CLOSED' },
+    ],
+  };
+
+  it('requires the SAME court to satisfy both sport and facility', () => {
+    expect(matchingCourts(venue, { sportId: 'cricket', facility: 'OUTDOOR' })).toHaveLength(1);
+    expect(matchingCourts(venue, { sportId: 'cricket', facility: 'OUTDOOR' })[0].hourlyRate).toBe(2000);
+  });
+
+  it('ignores inactive courts', () => {
+    expect(matchingCourts(venue, { sportId: 'cricket', facility: 'INDOOR' })).toHaveLength(1);
+    expect(matchingCourts(venue, { sportId: 'cricket', facility: 'INDOOR' })[0].hourlyRate).toBe(3000);
+  });
+
+  it('filters by facility only when no sport is selected', () => {
+    expect(matchingCourts(venue, { facility: 'INDOOR' }).map((c) => c.sportId).sort())
+      .toEqual(['carrom', 'cricket']);
+  });
+});
+
+describe('venueMatchingPrice', () => {
+  const venue = {
+    startingPrice: 5000,
+    courts: [
+      { sportId: 'cricket', facilityType: 'INDOOR', hourlyRate: 3000, status: 'ACTIVE' },
+      { sportId: 'cricket', facilityType: 'INDOOR', hourlyRate: 2500, status: 'ACTIVE' },
+      { sportId: 'badminton', facilityType: 'OUTDOOR', hourlyRate: 900, status: 'ACTIVE' },
+    ],
+  };
+
+  it('falls back to the venue starting price when no filter is active', () => {
+    expect(venueMatchingPrice(venue, {})).toBe(5000);
+  });
+
+  it('uses the cheapest matching court when a filter is active', () => {
+    expect(venueMatchingPrice(venue, { sportId: 'cricket', facility: 'INDOOR' })).toBe(2500);
+  });
+
+  it('never reports an unrelated court price as the selected sport price', () => {
+    // Badminton is 900 but a cricket filter must reflect a cricket court, not 900.
+    expect(venueMatchingPrice(venue, { sportId: 'cricket', facility: 'OUTDOOR' })).toBe(5000);
   });
 });
 

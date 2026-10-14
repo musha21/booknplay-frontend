@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Business, CardMembership, Dashboard, EventNote, Home, Logout, People, Stadium } from '@mui/icons-material';
+import { AccountBalance, Business, CardMembership, Dashboard, EventNote, Home, Logout, People, Stadium } from '@mui/icons-material';
 import BrandLogo from '../ui/BrandLogo';
 import ThemeToggle from '../ui/ThemeToggle';
 import { revokeAndClearSession } from '../../lib/signOut';
@@ -8,6 +8,7 @@ const links = [
   [Dashboard, 'Overview', '/admin'],
   [Home, 'Homepage', '/admin/homepage'],
   [Business, 'Businesses', '/admin/businesses'],
+  [AccountBalance, 'Payouts', '/admin/payouts'],
   [CardMembership, 'Plans', '/admin/plans'],
   [Stadium, 'Venues', '/admin/venues'],
   [People, 'Customers', '/admin/customers'],

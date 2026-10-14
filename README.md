@@ -143,5 +143,6 @@ Before deploying a production release:
 
 ## Documentation
 
+- [Technical review docs (frontend + backend)](./docs/README.md) — system overview, portal features, customer/owner flows, API/auth/payments, data model, ops
 - [Project roadmap and implementation status](./ROADMAP.md)
 - [Design system](./DESIGN.md)

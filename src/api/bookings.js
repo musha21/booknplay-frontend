@@ -31,6 +31,14 @@ export const getBookingById = (id) =>
   apiClient.get(`/customer/bookings/${id}`).then((r) => r.data);
 
 /**
+ * Get a booking by PayHere order / booking reference
+ * GET /customer/bookings/by-ref/:bookingRef
+ * @param {string} bookingRef
+ */
+export const getBookingByRef = (bookingRef) =>
+  apiClient.get(`/customer/bookings/by-ref/${encodeURIComponent(bookingRef)}`).then((r) => r.data);
+
+/**
  * Get all my bookings (paginated)
  * GET /customer/bookings
  * @param {{ page?: number, size?: number }} params
@@ -68,3 +76,12 @@ export const cancelBooking = (id) =>
  */
 export const getCancellationPreview = (id) =>
   apiClient.get(`/customer/bookings/${id}/cancellation-preview`).then((r) => r.data);
+
+/**
+ * Submit a venue review for a finished booking.
+ * POST /customer/bookings/:id/review
+ * @param {string} id
+ * @param {{ rating: number, comment?: string }} data
+ */
+export const createBookingReview = (id, data) =>
+  apiClient.post(`/customer/bookings/${id}/review`, data).then((r) => r.data);

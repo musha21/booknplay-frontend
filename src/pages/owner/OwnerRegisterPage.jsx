@@ -25,6 +25,11 @@ export default function OwnerRegisterPage() {
     address: '',
     password: '',
     confirmPassword: '',
+    bankName: '',
+    bankAccountName: '',
+    bankAccountNumber: '',
+    bankBranch: '',
+    payoutFrequency: 'WEEKLY',
   });
   const [logo, setLogo] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -47,6 +52,11 @@ export default function OwnerRegisterPage() {
         contactPhone: form.contactPhone,
         address: form.address,
         password: form.password,
+        bankName: form.bankName,
+        bankAccountName: form.bankAccountName,
+        bankAccountNumber: form.bankAccountNumber,
+        bankBranch: form.bankBranch,
+        payoutFrequency: form.payoutFrequency || 'WEEKLY',
       });
       if (logo) {
         await uploadBusinessImages({ logo });
@@ -64,7 +74,7 @@ export default function OwnerRegisterPage() {
       mode="register"
       kicker="BooknPlay for business"
       title="Let’s grow your venue."
-      subtitle="Create your owner account. Set up your venue next."
+      subtitle="Create your owner account and payout details. Set up your venue next."
       alternate={{ prompt: 'Already part of the game?', label: 'Sign in', to: '/owner/login' }}
     >
       <form className="auth-form" onSubmit={handleSubmit}>
@@ -83,12 +93,39 @@ export default function OwnerRegisterPage() {
         <div className="auth-field">
           <label htmlFor="contactPhone">Phone</label>
           <input id="contactPhone" type="tel" autoComplete="tel" placeholder="+94771234567" value={form.contactPhone} onChange={set('contactPhone')} required />
-          <p className="auth-note">Include the country code, for example +9477.</p>
+          <p className="auth-note">Include the country code, for example +9477. Used for payout paid SMS.</p>
         </div>
         <div className="auth-field">
           <label htmlFor="address">Address</label>
           <textarea id="address" value={form.address} onChange={set('address')} required />
         </div>
+
+        <p className="auth-note" style={{ marginTop: '0.5rem', fontWeight: 700 }}>Payout / bank details</p>
+        <div className="auth-field">
+          <label htmlFor="bankName">Bank name</label>
+          <input id="bankName" value={form.bankName} onChange={set('bankName')} required />
+        </div>
+        <div className="auth-field">
+          <label htmlFor="bankAccountName">Account holder name</label>
+          <input id="bankAccountName" value={form.bankAccountName} onChange={set('bankAccountName')} required />
+        </div>
+        <div className="auth-field">
+          <label htmlFor="bankAccountNumber">Account number</label>
+          <input id="bankAccountNumber" value={form.bankAccountNumber} onChange={set('bankAccountNumber')} required />
+        </div>
+        <div className="auth-field">
+          <label htmlFor="bankBranch">Bank branch</label>
+          <input id="bankBranch" value={form.bankBranch} onChange={set('bankBranch')} required />
+        </div>
+        <div className="auth-field">
+          <label htmlFor="payoutFrequency">Payout frequency</label>
+          <select id="payoutFrequency" value={form.payoutFrequency} onChange={set('payoutFrequency')} required>
+            <option value="WEEKLY">Weekly</option>
+            <option value="MONTHLY">Monthly</option>
+          </select>
+          <p className="auth-note">Platform admin verifies your bank before the first payout.</p>
+        </div>
+
         <div className="auth-field">
           <label htmlFor="password">Password</label>
           <div className="auth-password">

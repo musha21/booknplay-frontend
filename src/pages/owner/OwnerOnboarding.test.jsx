@@ -60,11 +60,18 @@ async function clickContinue() {
   fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
 }
 
-async function advanceToPhotos() {
-  fireEvent.click(screen.getByText('Badminton'));
+async function selectSportWithFacility(sportName = 'Badminton', facilityType = 'Indoor') {
+  fireEvent.click(screen.getByText(sportName));
   await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+  fireEvent.mouseDown(screen.getByLabelText(/^Facility$/i));
+  const option = await screen.findByRole('option', { name: facilityType });
+  fireEvent.click(option);
   fireEvent.click(screen.getByRole('button', { name: /^Save$/i }));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+}
+
+async function advanceToPhotos() {
+  await selectSportWithFacility('Badminton', 'Indoor');
   await clickContinue();
 
   fireEvent.click(screen.getByRole('button', { name: /Set test location/i }));
@@ -134,8 +141,27 @@ describe('Phase 4 - Business Onboarding Page', () => {
 
     await waitFor(() => {
       expect(onboardVenue).toHaveBeenCalledTimes(1);
+      expect(onboardVenue).toHaveBeenCalledWith(expect.objectContaining({
+        facilities: expect.arrayContaining([
+          expect.objectContaining({
+            sportName: 'Badminton',
+            facilityType: 'INDOOR',
+          }),
+        ]),
+      }));
       expect(uploadVenueMedia).toHaveBeenCalledWith('v-new-1', expect.arrayContaining([expect.any(File)]));
       expect(submitVenue).toHaveBeenCalledWith('v-new-1');
     });
+  });
+
+  it('requires Indoor or Outdoor before saving a sport', async () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Badminton'));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Please select Indoor or Outdoor/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });

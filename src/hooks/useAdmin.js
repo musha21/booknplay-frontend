@@ -20,6 +20,25 @@ export const useAdminSubscriptionPlans = () => useQuery({
   select: (value) => (Array.isArray(value) ? value : value?.content || []),
 });
 export const useHomepageDraft = () => useQuery({ queryKey: ['admin-homepage'], queryFn: api.getHomepageDraft });
+export const useAdminPayoutBusinesses = () => useQuery({
+  queryKey: ['admin-payout-businesses'],
+  queryFn: api.getAdminPayoutBusinesses,
+  select: (value) => (Array.isArray(value) ? value : []),
+});
+export const useAdminPayouts = (params = {}) => useQuery({
+  queryKey: ['admin-payouts', params],
+  queryFn: () => api.getAdminPayouts({ size: 100, ...params }),
+  select: (value) => value?.content || [],
+});
+export const useAdminPayout = (id) => useQuery({
+  queryKey: ['admin-payout', id],
+  queryFn: () => api.getAdminPayout(id),
+  enabled: Boolean(id),
+});
+export const useAdminPayoutConfig = () => useQuery({
+  queryKey: ['admin-payout-config'],
+  queryFn: api.getAdminPayoutConfig,
+});
 export function useAdminAction(mutationFn, invalidates) {
   const client = useQueryClient();
   return useMutation({

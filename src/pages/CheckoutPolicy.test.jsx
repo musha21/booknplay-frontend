@@ -1,9 +1,24 @@
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CheckoutPage from './CheckoutPage';
 import HelpPage from './account/HelpPage';
+
+vi.mock('../components/ui/SlingButton', () => ({
+  default: ({ onSend, ariaLabel, disabled }) =>
+    React.createElement(
+      'button',
+      {
+        type: 'button',
+        'aria-label': ariaLabel,
+        disabled,
+        onClick: () => onSend?.(),
+      },
+      ariaLabel,
+    ),
+}));
 
 const bookingMocks = vi.hoisted(() => ({
   createBooking: vi.fn(),
@@ -138,10 +153,11 @@ describe('checkout policy guard', () => {
 });
 
 describe('help cancellation policy guard', () => {
-  it('describes the 1-hour-from-booking full-refund rule', () => {
+  it('describes venue free-cancellation and late-refund terms', () => {
     render(<HelpPage />);
 
-    expect(screen.getByText(/1 hour from booking for a full refund/i)).toBeInTheDocument();
+    expect(screen.getByText(/free-cancellation deadline/i)).toBeInTheDocument();
+    expect(screen.getByText(/late-refund percentage/i)).toBeInTheDocument();
     expect(screen.queryByText(/6 hours|50% fee/i)).not.toBeInTheDocument();
   });
 });

@@ -1,3 +1,4 @@
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@mui/material';
 import Avatar from '@mui/material/Avatar';
@@ -5,7 +6,7 @@ import { Favorite, FavoriteBorder, Place } from '@mui/icons-material';
 import { motion, useReducedMotion } from 'motion/react';
 import VenueCarousel from './VenueCarousel';
 import { formatCurrency } from '../../utils/formatters';
-import { sportAccent, venueBusinessLogo, venueDisplayAddress, venueOperatorName, venuePrice, venueSportLabel } from '../../utils/venue';
+import { facilityLabel, sportAccent, venueBusinessLogo, venueDisplayAddress, venueMatchingPrice, venueOperatorName, venuePrice, venueSportLabel } from '../../utils/venue';
 import { formatDistanceKm } from '../../utils/geo';
 import { buttonPress, fadeUp, reducedFade } from '../../motion/variants';
 import mediaUrl from '../../utils/mediaUrl';
@@ -16,29 +17,46 @@ const SAMPLE_SLOTS = [
   ['5:00 PM', '7:00 PM', '9:00 PM'],
 ];
 
-function venueSportLabels(venue) {
-  const sports = [...new Set(
-    (venue.courts || [])
+function venueSportLabels(venue, selectedSportId = '', selectedSportLabel = '', facility = '') {
+  const courts = (venue.courts || []).filter((court) => !court?.status || String(court.status).toUpperCase() === 'ACTIVE');
+  const distinctFrom = (list) => [...new Set(
+    list
       .map((court) => court?.sportName || court?.sport?.name)
       .filter(Boolean)
       .map((name) => String(name).trim()),
   )];
+  const fac = facility ? String(facility).toUpperCase() : '';
+  const suffix = fac ? ` • ${facilityLabel(fac)}` : '';
+  const key = String(selectedSportId || '').trim();
+  if (key) {
+    let pool = courts.filter((court) => [court?.sportId, court?.sport?.id].some((id) => id != null && String(id) === key));
+    if (fac) pool = pool.filter((court) => String(court?.facilityType || '').toUpperCase() === fac);
+    const matched = distinctFrom(pool);
+    const base = matched.length ? matched[0] : (String(selectedSportLabel || '').trim() || matched[0] || '');
+    if (base) return [`${base}${suffix}`];
+  }
+  if (fac) {
+    const matched = distinctFrom(courts.filter((court) => String(court?.facilityType || '').toUpperCase() === fac));
+    if (matched.length) return matched.slice(0, 3).map((label) => `${label}${suffix}`);
+  }
+  const sports = distinctFrom(courts);
   if (sports.length) return sports.slice(0, 3);
   const primary = venue.sportName || venue.venueType || venue.sportType;
   return primary ? [primary] : ['Multi-sport'];
 }
 
-export default function VenueCard({ venue, variant = 'default', actionLabel = 'View Slots', showSlots = false, slotIndex = 0, saved = false, onToggleSaved, autoplayOffsetMs = 0 }) {
+export default function VenueCard({ venue, variant = 'default', actionLabel = 'View Slots', showSlots = false, slotIndex = 0, saved = false, onToggleSaved, autoplayOffsetMs = 0, selectedSportId = '', selectedSportLabel = '', facility = '' }) {
   const navigate = useNavigate();
   const reduced = useReducedMotion();
   if (!venue?.id) return null;
   const sport = venueSportLabel(venue);
-  const sportLabels = venueSportLabels(venue);
+  const sportLabels = venueSportLabels(venue, selectedSportId, selectedSportLabel, facility);
+  const displayPrice = venueMatchingPrice(venue, { sportId: selectedSportId, facility });
   const operator = venueOperatorName(venue);
   const locationText = venueDisplayAddress(venue);
 
   if (variant === 'home') {
-    const goToVenue = () => navigate(`/venues/${venue.id}`);
+    const goToVenue = () => navigate(`/venues/${venue.id}/slots`);
     const onCardKeyDown = (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
@@ -64,9 +82,6 @@ export default function VenueCard({ venue, variant = 'default', actionLabel = 'V
         {/* Image area */}
         <div className="hp-venue-image">
           <VenueCarousel venue={venue} className="h-full" imageClassName="h-full w-full object-cover" alt={venue.name} autoplayOffsetMs={autoplayOffsetMs} showLogo={false} />
-
-          {/* Sport tag top-left */}
-          <span className="hp-venue-tag">{sport}</span>
 
           {/* Distance badge bottom-left when geolocation is active */}
           {distanceBadgeText && (
@@ -143,7 +158,7 @@ export default function VenueCard({ venue, variant = 'default', actionLabel = 'V
           {/* Price + CTA */}
           <div className="hp-venue-bottom">
             <div className="hp-price">
-              {formatCurrency(venuePrice(venue), venue.currency || 'LKR')}
+              {formatCurrency(displayPrice, venue.currency || 'LKR')}
               <small> / hr</small>
             </div>
             <button
@@ -195,7 +210,7 @@ export default function VenueCard({ venue, variant = 'default', actionLabel = 'V
             </strong>
           </div>
           <motion.span whileTap={reduced ? undefined : buttonPress}>
-            <Button variant="text" onClick={() => navigate(`/venues/${venue.id}`)}>{actionLabel}</Button>
+            <Button variant="text" onClick={() => navigate(`/venues/${venue.id}/slots`)}>{actionLabel}</Button>
           </motion.span>
         </div>
       </div>

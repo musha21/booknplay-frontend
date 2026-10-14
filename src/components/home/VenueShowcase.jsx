@@ -23,6 +23,9 @@ export default function VenueShowcase({
   onUseLocation,
   locationStatus = 'idle',
   hasLocation = false,
+  selectedSportId = '',
+  selectedSportLabel = '',
+  facility = '',
 }) {
   const reduced = useReducedMotion();
   const navigate = useNavigate();
@@ -154,6 +157,9 @@ export default function VenueShowcase({
               venue={venue}
               variant="home"
               actionLabel="View slots"
+              selectedSportId={selectedSportId}
+              selectedSportLabel={selectedSportLabel}
+              facility={facility}
               saved={savedIds.some((id) => String(id) === String(venue.id))}
               onToggleSaved={() => toggleSaved(venue)}
               autoplayOffsetMs={index * 400}

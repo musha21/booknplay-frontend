@@ -90,6 +90,29 @@ export const useInitiatePayment = () => {
   });
 };
 
+export const useCreateBookingReview = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, rating, comment }) =>
+      bookingsApi.createBookingReview(bookingId, { rating, comment }),
+    onSuccess: (res, variables) => {
+      const review = res?.data ?? res;
+      toast.success('Thanks for your review!');
+      queryClient.invalidateQueries({ queryKey: ['booking', variables.bookingId] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      if (review?.venueId || variables.venueId) {
+        queryClient.invalidateQueries({
+          queryKey: ['venue-reviews', review?.venueId || variables.venueId],
+        });
+        queryClient.invalidateQueries({ queryKey: ['venue', review?.venueId || variables.venueId] });
+      }
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Failed to submit review.');
+    },
+  });
+};
+
 export const usePaymentStatus = (bookingId, options = {}) =>
   useQuery({
     queryKey: ['paymentStatus', bookingId],

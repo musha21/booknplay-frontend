@@ -36,6 +36,14 @@ const persistCustomer = (res, storeLogin) => {
 const apiErrorMessage = (err, fallback) =>
   err?.response?.data?.message || fallback;
 
+const navigateAfterAuth = (navigate, locationState) => {
+  const next = continueAfterAuth(locationState);
+  navigate(
+    { pathname: next.pathname, search: next.search || '', state: next.state },
+    { replace: true },
+  );
+};
+
 export const useAuth = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,8 +54,7 @@ export const useAuth = () => {
     onSuccess: (res) => {
       const name = persistCustomer(res, storeLogin);
       toast.success(`Welcome back, ${name}!`);
-      const next = continueAfterAuth(location.state);
-      navigate(next.pathname, { state: next.state, replace: true });
+      navigateAfterAuth(navigate, location.state);
     },
     onError: (err) => {
       toast.error(apiErrorMessage(err, 'Invalid phone/email or password'));
@@ -59,8 +66,7 @@ export const useAuth = () => {
     onSuccess: (res) => {
       persistCustomer(res, storeLogin);
       toast.success('Account created. You can finish your booking now.');
-      const next = continueAfterAuth(location.state);
-      navigate(next.pathname, { state: next.state, replace: true });
+      navigateAfterAuth(navigate, location.state);
     },
     onError: (err) => {
       toast.error(apiErrorMessage(err, 'Registration failed. Please check your inputs.'));
@@ -96,8 +102,7 @@ export const useLogin = () => {
     onSuccess: (res) => {
       const name = persistCustomer(res, storeLogin);
       toast.success(`Welcome back, ${name}!`);
-      const next = continueAfterAuth(location.state);
-      navigate(next.pathname, { state: next.state, replace: true });
+      navigateAfterAuth(navigate, location.state);
     },
     onError: (err) => {
       toast.error(apiErrorMessage(err, 'Invalid phone/email or password'));
@@ -115,8 +120,7 @@ export const useRegister = () => {
     onSuccess: (res) => {
       persistCustomer(res, storeLogin);
       toast.success('Account created. You can finish your booking now.');
-      const next = continueAfterAuth(location.state);
-      navigate(next.pathname, { state: next.state, replace: true });
+      navigateAfterAuth(navigate, location.state);
     },
     onError: (err) => {
       toast.error(apiErrorMessage(err, 'Registration failed'));
@@ -154,8 +158,7 @@ export const useRegisterWithPhone = () => {
     onSuccess: (res) => {
       persistCustomer(res, storeLogin);
       toast.success('Account created. You can finish your booking now.');
-      const next = continueAfterAuth(location.state);
-      navigate(next.pathname, { state: next.state, replace: true });
+      navigateAfterAuth(navigate, location.state);
     },
     onError: (err) => {
       const code = err?.response?.data?.code;

@@ -12,6 +12,8 @@ export default function HomeFilterBar({
   onSelectSport,
   selectedArea = '',
   onSelectArea,
+  facility = 'all',
+  onChangeFacility,
   filterDate = '',
   onChangeDate,
   filterTime = '',
@@ -38,10 +40,11 @@ export default function HomeFilterBar({
     if (filterDate) count += 1;
     if (filterTime) count += 1;
     if (selectedArea && selectedArea !== 'all' && selectedArea !== '') count += 1;
+    if (facility && facility !== 'all') count += 1;
     if (distanceKm && distanceKm !== 'all' && distanceKm !== '') count += 1;
     if (sortBy && sortBy !== 'nearest' && sortBy !== 'price_asc') count += 1;
     return count;
-  }, [filterDate, filterTime, selectedArea, distanceKm, sortBy]);
+  }, [filterDate, filterTime, selectedArea, facility, distanceKm, sortBy]);
 
   const hasLocation = Boolean(userLocation?.lat && userLocation?.lng);
 
@@ -123,7 +126,38 @@ export default function HomeFilterBar({
             </select>
           </div>
 
-          {/* 5. Find Venue CTA */}
+          {/* 5. Use my location */}
+          <div className="hp-filter-action">
+            <button
+              type="button"
+              onClick={onFetchLocation}
+              disabled={locationStatus === 'loading'}
+              title={hasLocation ? 'Location active' : 'Use my location'}
+              aria-label={
+                locationStatus === 'loading'
+                  ? 'Locating'
+                  : hasLocation
+                    ? 'Location active'
+                    : 'Use my location'
+              }
+              className={`min-h-[44px] px-3 sm:px-4 py-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 border transition duration-200 whitespace-nowrap ${
+                hasLocation
+                  ? 'bg-slate-900 text-lime-400 border-slate-900 dark:bg-slate-800 dark:border-slate-700'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-lime-500'
+              }`}
+            >
+              <MyLocation className={`text-base ${locationStatus === 'loading' ? 'animate-spin text-lime-400' : ''}`} fontSize="small" />
+              <span className="hidden sm:inline">
+                {locationStatus === 'loading'
+                  ? 'Locating…'
+                  : hasLocation
+                    ? 'Location Active'
+                    : 'Use my location'}
+              </span>
+            </button>
+          </div>
+
+          {/* 6. Find Venue CTA */}
           <div className="hp-filter-action">
             <button
               type="button"
@@ -135,7 +169,7 @@ export default function HomeFilterBar({
             </button>
           </div>
 
-          {/* 6. Compact Filter Toggle Button */}
+          {/* 7. Compact Filter Toggle Button */}
           <div className="hp-filter-action">
             <button
               type="button"
@@ -160,7 +194,7 @@ export default function HomeFilterBar({
             </button>
           </div>
 
-          {/* 7. Reset Filters Button — icon-only */}
+          {/* 8. Reset Filters Button — icon-only */}
           <div className="hp-filter-action">
             <IconButton
               onClick={onResetFilters}
@@ -195,6 +229,41 @@ export default function HomeFilterBar({
               className="overflow-hidden border-t border-slate-200 dark:border-slate-800 mt-3 pt-3"
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+                {/* Court facility: All / Indoor / Outdoor */}
+                <div className="space-y-1.5">
+                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Court type
+                  </span>
+                  <div
+                    role="group"
+                    aria-label="Court facility"
+                    className="flex min-h-[44px] items-stretch rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5 overflow-hidden"
+                  >
+                    {[
+                      { value: 'all', label: 'All' },
+                      { value: 'INDOOR', label: 'Indoor' },
+                      { value: 'OUTDOOR', label: 'Outdoor' },
+                    ].map((option) => {
+                      const active = (facility || 'all') === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => onChangeFacility?.(option.value)}
+                          className={`flex-1 whitespace-nowrap rounded-lg px-2 py-1 text-[11px] sm:text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-lime-400 ${
+                            active
+                              ? 'bg-slate-900 text-lime-400 shadow-sm dark:bg-black'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Distance Filter */}
                 <div className="space-y-1.5">
                   <label htmlFor="home-distance-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -232,32 +301,6 @@ export default function HomeFilterBar({
                     <option value="price_asc">Price: Low to High</option>
                     <option value="price_desc">Price: High to Low</option>
                   </select>
-                </div>
-
-                {/* Location Action */}
-                <div className="space-y-1.5 flex flex-col justify-end">
-                  <span className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Nearby Courts
-                  </span>
-                  <button
-                    type="button"
-                    onClick={onFetchLocation}
-                    disabled={locationStatus === 'loading'}
-                    className={`w-full min-h-[44px] px-3 py-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 border transition duration-200 ${
-                      hasLocation
-                        ? 'bg-slate-900 text-lime-400 border-slate-900 dark:bg-slate-800 dark:border-slate-700'
-                        : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:border-lime-500'
-                    }`}
-                  >
-                    <MyLocation className={`text-base ${locationStatus === 'loading' ? 'animate-spin text-lime-400' : ''}`} fontSize="small" />
-                    <span>
-                      {locationStatus === 'loading'
-                        ? 'Locating…'
-                        : hasLocation
-                          ? 'Location Active ✓'
-                          : 'Use my location'}
-                    </span>
-                  </button>
                 </div>
               </div>
 

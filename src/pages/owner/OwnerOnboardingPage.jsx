@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Alert, Box, Button, Card, CardActionArea, CardContent, Chip, Dialog, DialogActions,
-  DialogContent, DialogTitle, LinearProgress, Stack, Switch, TextField, Typography,
+  DialogContent, DialogTitle, LinearProgress, MenuItem, Stack, Switch, TextField, Typography,
 } from '@mui/material';
 import {
   Add, Casino, Pool, SportsBasketball, SportsCricket, SportsSoccer, SportsTennis,
@@ -73,6 +73,8 @@ export default function OwnerOnboardingPage() {
   const [additionalRules, setAdditionalRules] = useState('');
   const [dialogSport, setDialogSport] = useState(null);
   const [dialogQty, setDialogQty] = useState(1);
+  const [dialogFacilityType, setDialogFacilityType] = useState('');
+  const [dialogFacilityError, setDialogFacilityError] = useState(false);
   const [customSportOpen, setCustomSportOpen] = useState(false);
   const [customSport, setCustomSport] = useState({ name: '', resource: 'Court' });
   const [photos, setPhotos] = useState([]);
@@ -101,21 +103,34 @@ export default function OwnerOnboardingPage() {
   const openSportDialog = (sport) => {
     const existing = facilities.find((f) => f.sportName === sport.name);
     setDialogQty(existing?.quantity || 1);
+    setDialogFacilityType(existing?.facilityType || '');
+    setDialogFacilityError(false);
     setDialogSport(sport);
   };
 
   const confirmSportQuantity = () => {
     if (!dialogSport) return;
+    if (!dialogFacilityType) {
+      setDialogFacilityError(true);
+      return;
+    }
     const quantity = Math.max(1, Number(dialogQty) || 1);
     const courtNames = buildResourceNames(dialogSport.resource, quantity);
     setFacilities((prev) => {
       const next = prev.filter((f) => f.sportName !== dialogSport.name);
-      return [...next, { sportName: dialogSport.name, resource: dialogSport.resource, quantity, courtNames }];
+      return [...next, {
+        sportName: dialogSport.name,
+        resource: dialogSport.resource,
+        quantity,
+        courtNames,
+        facilityType: dialogFacilityType,
+      }];
     });
     setPricing((prev) => ({
       ...prev,
       [dialogSport.name]: prev[dialogSport.name] || { price: '1500', durationMinutes: 60 },
     }));
+    setDialogFacilityError(false);
     setDialogSport(null);
   };
 
@@ -123,6 +138,7 @@ export default function OwnerOnboardingPage() {
     if (!dialogSport) return;
     setFacilities((prev) => prev.filter((f) => f.sportName !== dialogSport.name));
     setDialogSport(null);
+    setDialogFacilityError(false);
   };
 
   const addCustomSport = () => {
@@ -146,6 +162,7 @@ export default function OwnerOnboardingPage() {
   const validate = () => {
     if (step === 0 && facilities.length === 0) return 'Select at least one sport';
     if (step === 0 && facilities.some((f) => !f.quantity || f.quantity < 1)) return 'Each sport needs at least 1 bookable space';
+    if (step === 0 && facilities.some((f) => !f.facilityType)) return 'Choose Indoor or Outdoor for each sport';
     if (step === 1 && (!location?.formattedAddress || location.latitude == null)) return 'Select a map location';
     if (step === 2 && hours.filter((h) => !h.closed).some((h) => h.openTime >= h.closeTime)) return 'Open time must be before close time on active operating days';
     if (step === 3 && facilities.some((f) => !Number(pricing[f.sportName]?.price) || Number(pricing[f.sportName]?.price) <= 0)) return 'Set a valid price above 0 for each sport';
@@ -215,6 +232,7 @@ export default function OwnerOnboardingPage() {
           sportName: f.sportName,
           quantity: f.quantity,
           courtNames: f.courtNames,
+          facilityType: f.facilityType,
           price: Number(pricing[f.sportName]?.price || 0),
           durationMinutes: Number(pricing[f.sportName]?.durationMinutes || 60),
         })),
@@ -298,19 +316,25 @@ export default function OwnerOnboardingPage() {
       {step === 0 && (
         <Stack spacing={2}>
           <Typography variant="h4">Which sports can customers book?</Typography>
-          <Typography color="text.secondary">Select every sport you offer. Each click asks how many courts, pitches, tables, or lanes to create (named A, B, C…).</Typography>
+          <Typography color="text.secondary">Select every sport you offer. Each click asks for Indoor or Outdoor and how many courts, pitches, tables, or lanes to create (named A, B, C…).</Typography>
           <Box className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {displayedSports.map((sport) => {
               const selected = facilities.find((f) => f.sportName === sport.name);
+              const facilityLabel = selected?.facilityType === 'INDOOR' ? 'Indoor' : selected?.facilityType === 'OUTDOOR' ? 'Outdoor' : '';
               return (
-                <Card key={sport.name} variant="outlined" className={`h-full transition-colors ${selected ? '!border-2 !border-lime-500 !bg-lime-50 dark:!bg-lime-950/20' : ''}`}>
+                <Card key={sport.name} variant="outlined" className={`h-full transition-colors ${selected ? '!border-2 !border-lime-500 !bg-lime-50 dark:!bg-lime-950/30' : 'dark:!bg-transparent'}`}>
                   <CardActionArea onClick={() => openSportDialog(sport)} className="!h-full">
                     <CardContent className="flex min-h-44 flex-col items-center justify-center !p-4 text-center">
-                      <Box className={`mb-2 flex h-10 w-10 items-center justify-center rounded-full ${selected ? 'bg-lime-300 text-navy-900' : 'bg-slate-100 text-muted dark:bg-navy-800'}`}>{sport.icon}</Box>
+                      <Box className={`mb-2 flex h-10 w-10 items-center justify-center rounded-full ${selected ? 'bg-lime-300 text-navy-900' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{sport.icon}</Box>
                       <Typography variant="body2" fontWeight={700} className="min-h-10 content-center">{sport.name}</Typography>
                       <Typography variant="caption" color="text.secondary">{sport.resource}</Typography>
-                      <Box className="mt-2 flex h-6 items-center">
-                        {selected && <Chip size="small" color="secondary" label={`${selected.quantity} ${sport.resource}${selected.quantity === 1 ? '' : 's'}`} />}
+                      <Box className="mt-2 flex min-h-6 flex-wrap items-center justify-center gap-1">
+                        {selected && (
+                          <>
+                            <Chip size="small" color="secondary" label={`${selected.quantity} ${sport.resource}${selected.quantity === 1 ? '' : 's'}`} />
+                            {facilityLabel && <Chip size="small" variant="outlined" label={facilityLabel} />}
+                          </>
+                        )}
                       </Box>
                     </CardContent>
                   </CardActionArea>
@@ -320,7 +344,7 @@ export default function OwnerOnboardingPage() {
             <Card variant="outlined" className="h-full !border-dashed">
               <CardActionArea onClick={() => setCustomSportOpen(true)} className="!h-full">
                 <CardContent className="flex min-h-44 flex-col items-center justify-center !p-4 text-center">
-                  <Box className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-muted dark:bg-navy-800"><Add /></Box>
+                  <Box className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"><Add /></Box>
                   <Typography variant="body2" fontWeight={700}>Add another sport</Typography>
                   <Typography variant="caption" color="text.secondary">Not listed above</Typography>
                   <Box className="mt-2 h-6" />
@@ -513,41 +537,82 @@ export default function OwnerOnboardingPage() {
         )}
       </Box>
 
-      <Dialog open={Boolean(dialogSport)} onClose={() => setDialogSport(null)} fullWidth maxWidth="xs">
+      <Dialog
+        open={Boolean(dialogSport)}
+        onClose={() => {
+          setDialogSport(null);
+          setDialogFacilityError(false);
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
         <DialogTitle>{dialogSport?.name}</DialogTitle>
-        <DialogContent>
-          <Typography className="!mb-3" color="text.secondary">
-            How many {dialogSport?.resource?.toLowerCase()}s should customers be able to book?
-          </Typography>
-          <TextField
-            autoFocus
-            fullWidth
-            type="number"
-            label={`Number of ${dialogSport?.resource}s`}
-            inputProps={{ min: 1, max: 26 }}
-            value={dialogQty}
-            onChange={(e) => setDialogQty(Math.max(1, Number(e.target.value) || 1))}
-          />
-          {dialogQty > 0 && dialogSport && (
-            <Typography variant="body2" className="!mt-3" color="text.secondary">
-              Names: {buildResourceNames(dialogSport.resource, Math.max(1, Number(dialogQty) || 1)).join(', ')}
+        <DialogContent sx={{ pt: 2.5 }}>
+          <Stack spacing={2.5}>
+            <Typography color="text.secondary">
+              How many {dialogSport?.resource?.toLowerCase()}s should customers be able to book?
             </Typography>
-          )}
+            <TextField
+              select
+              fullWidth
+              label="Facility"
+              value={dialogFacilityType}
+              error={dialogFacilityError && !dialogFacilityType}
+              helperText={dialogFacilityError && !dialogFacilityType ? 'Please select Indoor or Outdoor.' : 'Is this space indoor or outdoor?'}
+              onChange={(e) => {
+                setDialogFacilityType(e.target.value);
+                if (e.target.value) setDialogFacilityError(false);
+              }}
+            >
+              <MenuItem value="" disabled>Select indoor or outdoor</MenuItem>
+              <MenuItem value="INDOOR">Indoor</MenuItem>
+              <MenuItem value="OUTDOOR">Outdoor</MenuItem>
+            </TextField>
+            <TextField
+              autoFocus
+              fullWidth
+              type="number"
+              label={`Number of ${dialogSport?.resource}s`}
+              inputProps={{ min: 1, max: 26 }}
+              value={dialogQty}
+              onChange={(e) => setDialogQty(Math.max(1, Number(e.target.value) || 1))}
+            />
+            {dialogQty > 0 && dialogSport && (
+              <Typography variant="body2" color="text.secondary">
+                Names: {buildResourceNames(dialogSport.resource, Math.max(1, Number(dialogQty) || 1)).join(', ')}
+              </Typography>
+            )}
+          </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions className="!px-6 !pb-4">
           {selectedSport && <Button color="error" onClick={removeSport}>Remove</Button>}
-          <Button onClick={() => setDialogSport(null)}>Cancel</Button>
+          <Button onClick={() => { setDialogSport(null); setDialogFacilityError(false); }}>Cancel</Button>
           <Button variant="contained" onClick={confirmSportQuantity}>Save</Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={customSportOpen} onClose={() => setCustomSportOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Add another sport</DialogTitle>
-        <DialogContent className="flex flex-col gap-3 !pt-2">
-          <TextField autoFocus label="Sport name" placeholder="e.g. Pickleball" value={customSport.name} onChange={(e) => setCustomSport({ ...customSport, name: e.target.value })} />
-          <TextField label="Facility type" placeholder="e.g. Court, Pitch, Table, Lane" value={customSport.resource} onChange={(e) => setCustomSport({ ...customSport, resource: e.target.value })} />
+        <DialogContent sx={{ pt: 2.5 }}>
+          <Stack spacing={2.5}>
+            <TextField
+              autoFocus
+              fullWidth
+              label="Sport name"
+              placeholder="e.g. Pickleball"
+              value={customSport.name}
+              onChange={(e) => setCustomSport({ ...customSport, name: e.target.value })}
+            />
+            <TextField
+              fullWidth
+              label="Facility type"
+              placeholder="e.g. Court, Pitch, Table, Lane"
+              value={customSport.resource}
+              onChange={(e) => setCustomSport({ ...customSport, resource: e.target.value })}
+            />
+          </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions className="!px-6 !pb-4">
           <Button onClick={() => setCustomSportOpen(false)}>Cancel</Button>
           <Button variant="contained" disabled={!customSport.name.trim()} onClick={addCustomSport}>Continue</Button>
         </DialogActions>

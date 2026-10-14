@@ -246,7 +246,7 @@ const AccordionGallery = ({
 
   const handleClick = (i, e) => {
     if (autoPlay) {
-      pauseTemporarily(Math.max(4000, autoPlayInterval));
+      pauseTemporarily(Math.max(2000, autoPlayInterval));
     }
     if (i !== active) {
       e.preventDefault();
@@ -261,7 +261,7 @@ const AccordionGallery = ({
 
   const handleKeyDown = (i, e) => {
     if (autoPlay) {
-      pauseTemporarily(Math.max(4000, autoPlayInterval));
+      pauseTemporarily(Math.max(2000, autoPlayInterval));
     }
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault();
@@ -343,7 +343,7 @@ const AccordionGallery = ({
               className={`ag-indicator-dot${i === active ? ' ag-indicator-dot--active' : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
-                if (autoPlay) pauseTemporarily(Math.max(4000, autoPlayInterval));
+                if (autoPlay) pauseTemporarily(Math.max(2000, autoPlayInterval));
                 setActive(i);
               }}
               aria-label={`Go to slide ${i + 1}: ${item.label || ''}`}

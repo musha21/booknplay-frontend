@@ -15,7 +15,7 @@ const mockSports = [
 ];
 
 describe('HomeFilterBar', () => {
-  it('renders date, time, sport, area, filter and reset controls', () => {
+  it('renders date, time, sport, area, location, filter and reset controls', () => {
     const onSelectSport = vi.fn();
     const onSelectArea = vi.fn();
     const onResetFilters = vi.fn();
@@ -37,11 +37,13 @@ describe('HomeFilterBar', () => {
     expect(screen.getByLabelText('Select Date')).toBeInTheDocument();
     expect(screen.getByLabelText('Select Time')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Find Venue' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Use my location' })).toBeInTheDocument();
     expect(screen.getByLabelText('Select Sport')).toHaveValue('cricket');
     expect(screen.getByLabelText('Select Area')).toHaveValue('');
     expect(screen.getByRole('button', { name: 'Advanced filters' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reset filters' })).toBeInTheDocument();
     expect(screen.getByText('5 venues')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Court facility' })).not.toBeInTheDocument();
   });
 
   it('triggers onTogglePanel when the advanced filter toggle is clicked', () => {
@@ -94,6 +96,22 @@ describe('HomeFilterBar', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 
+  it('exposes Use my location on the main bar when the advanced panel is closed', () => {
+    const onFetchLocation = vi.fn();
+
+    render(
+      <HomeFilterBar
+        sports={mockSports}
+        isPanelOpen={false}
+        onFetchLocation={onFetchLocation}
+      />,
+    );
+
+    const locationBtn = screen.getByRole('button', { name: 'Use my location' });
+    fireEvent.click(locationBtn);
+    expect(onFetchLocation).toHaveBeenCalledTimes(1);
+  });
+
   it('renders advanced panel controls when open and shows location message when disabled', () => {
     render(
       <HomeFilterBar
@@ -105,7 +123,54 @@ describe('HomeFilterBar', () => {
       />,
     );
 
+    expect(screen.getByRole('group', { name: 'Court facility' })).toBeInTheDocument();
     expect(screen.getByLabelText('Distance')).toBeDisabled();
     expect(screen.getByText(/Enable location to filter by distance/i)).toBeInTheDocument();
+  });
+
+  it('renders the Indoor/Outdoor segmented control in the panel and toggles the facility', () => {
+    const onChangeFacility = vi.fn();
+
+    render(
+      <HomeFilterBar
+        sports={mockSports}
+        facility="all"
+        onChangeFacility={onChangeFacility}
+        isPanelOpen={true}
+      />,
+    );
+
+    const group = screen.getByRole('group', { name: 'Court facility' });
+    const allBtn = screen.getByRole('button', { name: 'All' });
+    const indoorBtn = screen.getByRole('button', { name: 'Indoor' });
+    const outdoorBtn = screen.getByRole('button', { name: 'Outdoor' });
+
+    expect(group).toBeInTheDocument();
+    // "All" is the active/default selection.
+    expect(allBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(indoorBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(outdoorBtn).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(indoorBtn);
+    expect(onChangeFacility).toHaveBeenCalledWith('INDOOR');
+
+    fireEvent.click(outdoorBtn);
+    expect(onChangeFacility).toHaveBeenCalledWith('OUTDOOR');
+  });
+
+  it('marks the active facility button as pressed and counts it as an active filter', () => {
+    render(
+      <HomeFilterBar
+        sports={mockSports}
+        facility="INDOOR"
+        onChangeFacility={vi.fn()}
+        isPanelOpen={true}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Indoor' })).toHaveAttribute('aria-pressed', 'true');
+    // A single active facility filter surfaces as "1" on the advanced-filter badge.
+    expect(screen.getByText('1')).toBeInTheDocument();
   });
 });

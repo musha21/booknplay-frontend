@@ -1,8 +1,11 @@
-import { Chip, Skeleton } from '@mui/material';
+import { Button, Chip, Skeleton } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { Star } from '@mui/icons-material';
 import { useBookingHistory } from '../../hooks/useBookings';
 import { formatBookingTimes } from '../../utils/formatters';
 
 export default function BookingHistoryPage() {
+  const navigate = useNavigate();
   const { data, isLoading } = useBookingHistory();
 
   const bookings = data?.data?.content || [];
@@ -22,11 +25,31 @@ export default function BookingHistoryPage() {
         <div className="mt-6 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
           {bookings.map((b) => (
             <div key={b.id} className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-              <div className="min-w-0">
+              <button
+                type="button"
+                className="min-w-0 text-left"
+                onClick={() => navigate(`/bookings/${b.id}`)}
+              >
                 <h3 className="customer-card-title truncate">{b.venueName} - {b.courtName}</h3>
                 <p className="customer-body mt-1">{b.date} | {formatBookingTimes(b)}</p>
+              </button>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <Chip label={b.status} className="!bg-canvas !font-bold !text-ink" />
+                {b.canReview && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Star />}
+                    onClick={() => navigate(`/bookings/${b.id}`)}
+                    className="!rounded-xl !font-bold"
+                  >
+                    Rate venue
+                  </Button>
+                )}
+                {b.hasReview && (
+                  <span className="text-xs font-semibold text-muted">Reviewed</span>
+                )}
               </div>
-              <Chip label={b.status} className="!shrink-0 !bg-canvas !font-bold !text-ink" />
             </div>
           ))}
         </div>

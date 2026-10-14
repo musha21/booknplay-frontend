@@ -1,3 +1,4 @@
+import React from 'react';
 import { Accordion, AccordionSummary, AccordionDetails, Typography } from '@mui/material';
 import {
  ExpandMore
@@ -16,7 +17,7 @@ export default function HelpPage() {
         </AccordionSummary>
         <AccordionDetails>
           <Typography className="!text-muted">
-            Open the Booking Details page to request a cancellation. When the venue allows cancel, you have 1 hour from booking for a full refund of the amount paid. After that hour, online cancellation is not available. Contact the venue or support if you need help.
+            Open Booking Details to cancel when the venue allows it. Full refunds apply if you cancel before the venue’s free-cancellation deadline (hours before start). After that deadline, a partial refund may apply at the venue’s late-refund percentage. Walk-ins are settled by the venue. Contact the venue or support if you need help.
           </Typography>
         </AccordionDetails>
       </Accordion>

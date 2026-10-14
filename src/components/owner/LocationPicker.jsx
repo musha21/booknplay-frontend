@@ -5,6 +5,13 @@ import PlacesAutocompleteInput from '../maps/PlacesAutocompleteInput';
 import PinMap from '../maps/PinMap';
 import { geocodeAddress, reverseGeocode, KANDY_CENTER, hasMapsJsKey } from '../../lib/googleMaps';
 
+const ADDRESS_INPUT_CLASS = [
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900',
+  'placeholder:text-slate-500',
+  'dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400',
+  'focus:outline-none focus:ring-2 focus:ring-lime-400',
+].join(' ');
+
 export default function LocationPicker({ value, onChange }) {
   const [query, setQuery] = useState(value?.formattedAddress || '');
   const position = useMemo(
@@ -45,7 +52,7 @@ export default function LocationPicker({ value, onChange }) {
     <Stack spacing={2}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
         <PlacesAutocompleteInput
-          className="w-full rounded-lg border border-line bg-white px-3 py-3 text-sm"
+          className={ADDRESS_INPUT_CLASS}
           value={query}
           placeholder="Search address"
           onChange={setQuery}
@@ -69,17 +76,25 @@ export default function LocationPicker({ value, onChange }) {
         />
         <Button variant="outlined" startIcon={<MyLocation />} onClick={useCurrent}>Use current location</Button>
       </Stack>
-      <Box sx={{ height: { xs: 280, md: 380 }, borderRadius: 3, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+      <Box
+        className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700"
+        sx={{ height: { xs: 280, md: 380 }, position: 'relative' }}
+      >
         {hasMapsJsKey() ? (
-          <PinMap className="h-full w-full" lat={position.lat} lng={position.lng} onPick={(lat, lng) => applyLatLng(lat, lng)} />
+          <PinMap
+            className="h-full min-h-[280px] w-full"
+            lat={position.lat}
+            lng={position.lng}
+            onPick={(lat, lng) => applyLatLng(lat, lng)}
+          />
         ) : (
-          <Box className="flex h-full items-center justify-center p-4 text-sm text-muted">
+          <Box className="flex h-full min-h-[280px] items-center justify-center bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">
             Add Google Maps keys to drop a pin here. You can still type an address.
           </Box>
         )}
       </Box>
       {value?.formattedAddress && (
-        <Box className="rounded-xl bg-slate-50 p-3">
+        <Box className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/60 dark:ring-1 dark:ring-slate-700">
           <Typography variant="caption" color="text.secondary">Selected venue</Typography>
           <Typography fontWeight={700}>{value.formattedAddress}</Typography>
         </Box>

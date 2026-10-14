@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers';
@@ -15,9 +15,8 @@ const Layout = lazy(() => import('./components/layout/Layout'));
 const ProtectedRoute = lazy(() => import('./components/layout/ProtectedRoute'));
 const OwnerProtectedRoute = lazy(() => import('./components/layout/OwnerProtectedRoute'));
 const OwnerLayout = lazy(() => import('./components/layout/OwnerLayout'));
-const SearchPage = lazy(() => import('./pages/SearchPage'));
+const LegacySearchRedirect = lazy(() => import('./components/layout/LegacySearchRedirect'));
 const HomePage = lazy(() => import('./pages/HomePage'));
-const VenueDetailPage = lazy(() => import('./pages/VenueDetailPage'));
 const ChooseSlotPage = lazy(() => import('./pages/ChooseSlotPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const PaymentReturnPage = lazy(() => import('./pages/PaymentReturnPage'));
@@ -70,13 +69,14 @@ const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
 const AdminHomepagePage = lazy(() => import('./pages/admin/AdminHomepagePage'));
 const AdminPlansPage = lazy(() => import('./pages/admin/AdminPlansPage'));
+const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage'));
 
 const router = createBrowserRouter([
   {
     path: '/', element: <Layout />, children: [
       { index: true, element: <HomePage /> },
-      { path: 'search', element: <SearchPage /> },
-      { path: 'venues/:venueId', element: <VenueDetailPage /> },
+      { path: 'search', element: <LegacySearchRedirect /> },
+      { path: 'venues/:venueId', element: <Navigate to="slots" replace /> },
       { path: 'venues/:venueId/slots', element: <ChooseSlotPage /> },
       {
         element: <ProtectedRoute />, children: [
@@ -113,6 +113,7 @@ const router = createBrowserRouter([
         { index: true, element: <AdminDashboardPage /> },
         { path: 'homepage', element: <AdminHomepagePage /> },
         { path: 'businesses', element: <AdminBusinessesPage /> },
+        { path: 'payouts', element: <AdminPayoutsPage /> },
         { path: 'plans', element: <AdminPlansPage /> },
         { path: 'venues', element: <AdminVenuesPage /> },
         { path: 'customers', element: <AdminCustomersPage /> },

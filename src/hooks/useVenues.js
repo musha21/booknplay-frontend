@@ -57,6 +57,8 @@ export const useAvailability = (venueOrCourtId, date, courtId) =>
     queryFn: () => getAvailability(courtId || venueOrCourtId, date),
     enabled: Boolean(venueOrCourtId) && Boolean(date),
     staleTime: 1000 * 15,
+    refetchOnWindowFocus: true,
+    refetchInterval: 25_000,
     select: (data) => {
       const payload = unwrapApiData(data);
       if (Array.isArray(payload)) return payload;
