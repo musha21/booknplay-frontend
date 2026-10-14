@@ -1,3 +1,4 @@
+import React from 'react';
 import { Alert, Box, Card, CardContent, Stack, Switch, Typography } from '@mui/material';
 import { Policy } from '@mui/icons-material';
 import { FIXED_CANCEL_HOURS_AFTER_BOOKING, validateBookingPolicy } from '../../utils/bookingPolicy';

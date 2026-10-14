@@ -26,6 +26,47 @@ export function venuePrice(venue) {
   return Number(value || 0);
 }
 
+export const FACILITY_LABELS = { INDOOR: 'Indoor', OUTDOOR: 'Outdoor' };
+
+export function facilityLabel(value) {
+  if (!value) return '';
+  return FACILITY_LABELS[String(value).toUpperCase()] || String(value);
+}
+
+function isActiveCourt(court) {
+  return !court?.status || String(court.status).toUpperCase() === 'ACTIVE';
+}
+
+/**
+ * Returns the venue's active courts that satisfy BOTH the selected sport and the
+ * selected facility on the SAME court, so filters never cross-match unrelated courts.
+ */
+export function matchingCourts(venue, { sportId, facility } = {}) {
+  const key = String(sportId || '').trim();
+  const fac = facility ? String(facility).toUpperCase() : '';
+  return (venue?.courts || [])
+    .filter(isActiveCourt)
+    .filter((court) => {
+      if (key && ![court?.sportId, court?.sport?.id].some((id) => id != null && String(id) === key)) return false;
+      if (fac && String(court?.facilityType || '').toUpperCase() !== fac) return false;
+      return true;
+    });
+}
+
+/**
+ * Price for the court(s) matching the active filters. Falls back to the venue's
+ * overall starting price when no filter is active or nothing matches.
+ */
+export function venueMatchingPrice(venue, { sportId, facility } = {}) {
+  const hasFilter = Boolean(String(sportId || '').trim() || (facility && String(facility).trim()));
+  if (!hasFilter) return venuePrice(venue);
+  const rates = matchingCourts(venue, { sportId, facility })
+    .map((court) => Number(court?.hourlyRate))
+    .filter((rate) => Number.isFinite(rate) && rate > 0);
+  if (!rates.length) return venuePrice(venue);
+  return Math.min(...rates);
+}
+
 export function venueSportLabel(venue) {
   if (!venue) return 'Multi-sport venue';
   const courtSports = [...new Set(
@@ -80,5 +121,10 @@ export function venueGoogleMapsUrl(venue) {
 export function venueOperatorName(venue) {
   if (!venue) return '';
   return venue.businessName || venue.business?.name || '';
+}
+
+export function venueBusinessLogo(venue) {
+  if (!venue) return '';
+  return venue.businessLogoUrl || venue.business?.logoUrl || venue.business?.logo || venue.logoUrl || venue.businessImageUrl || '';
 }
 

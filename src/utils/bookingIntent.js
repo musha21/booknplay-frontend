@@ -25,15 +25,16 @@ export function continueAfterAuth(locationState) {
   const from = locationState?.from;
   if (from?.pathname && from.pathname !== '/auth/login' && from.pathname !== '/auth/register') {
     return {
-      pathname: `${from.pathname}${from.search || ''}`,
+      pathname: from.pathname,
+      search: from.search || '',
       state: from.state || readBookingIntent() || undefined,
     };
   }
   const intent = readBookingIntent();
   if (intent) {
-    return { pathname: '/checkout', state: intent };
+    return { pathname: '/checkout', search: '', state: intent };
   }
-  return { pathname: '/account' };
+  return { pathname: '/account', search: '' };
 }
 
 export function toApiTime(value) {

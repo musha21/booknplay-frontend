@@ -1,18 +1,21 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar, Avatar, Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon,
   Menu as MuiMenu, MenuItem, Select, Toolbar, Tooltip, Typography, useMediaQuery, useTheme,
 } from '@mui/material';
 import {
-  AccountCircle, Add, Assessment, CalendarMonth, ChevronLeft, ChevronRight, Close, CreditCard,
-  Dashboard, Groups, Logout, Menu as MenuIcon, Payments, Policy, Stadium,
+  AccountBalanceWallet, AccountCircle, Add, Assessment, Block, Build, CalendarMonth,
+  CalendarToday, Campaign, ChevronLeft, ChevronRight, Close, CreditCard, Dashboard,
+  EventAvailable, Groups, LocalActivity, Logout, Menu as MenuIcon, Paid, Payments,
+  People, RateReview, Settings, SportsTennis, Stadium, Storefront, Wallet,
 } from '@mui/icons-material';
 import { revokeAndClearSession } from '../../lib/signOut';
 import useAuthStore from '../../stores/authStore';
 import { useOwnerProfile, useOwnerSubscription, useOwnerVenues } from '../../hooks/useOwner';
 import {
   buildOwnerNavLinks,
+  OWNER_NAV_GROUPS,
   ownerNavHint,
   ownerPageTitle,
   readSidebarCollapsed,
@@ -32,8 +35,31 @@ import SubscriptionRequiredPanel from '../owner/SubscriptionRequiredPanel';
 
 const drawerExpanded = 264;
 const drawerCollapsed = 72;
-const workspaceLabels = new Set(['Venues', 'Earnings', 'Reports', 'Team', 'Billing', 'Business profile', 'Create venue']);
-const venueLabels = new Set(['Calendar', 'Bookable spaces', 'Booking policy']);
+
+const NAV_ICONS = {
+  Dashboard,
+  Venues: Storefront,
+  'Create venue': Add,
+  Courts: Stadium,
+  Sports: SportsTennis,
+  Bookings: EventAvailable,
+  Calendar: CalendarMonth,
+  'Walk-in': LocalActivity,
+  Availability: CalendarToday,
+  'Blocked slots': Block,
+  Maintenance: Build,
+  Pricing: Paid,
+  Promotions: Campaign,
+  Customers: People,
+  Payments: Payments,
+  Refunds: AccountBalanceWallet,
+  Reports: Assessment,
+  Earnings: Wallet,
+  Reviews: RateReview,
+  Staff: Groups,
+  Settings,
+  Billing: CreditCard,
+};
 
 function VenueSelect({ venues, value, onChange, fullWidth = false }) {
   return (
@@ -144,28 +170,23 @@ export default function OwnerLayout() {
   const subscriptionsEnabled = isOwnerSubscriptionsEnabled();
   const mutateAllowed = !subscriptionsEnabled || canMutateOwner(subscription);
   const lockMutateRoute = subscriptionsEnabled && !mutateAllowed && isOwnerMutatePath(location.pathname);
-  const navIcons = {
-    Venues: Dashboard,
-    Calendar: CalendarMonth,
-    'Bookable spaces': Stadium,
-    'Booking policy': Policy,
-    Earnings: Payments,
-    Reports: Assessment,
-    Team: Groups,
-    Billing: CreditCard,
-    'Business profile': AccountCircle,
-    'Create venue': Add,
-  };
-  const links = buildOwnerNavLinks({ role, venueId: activeVenueId, venueCount: venues.length })
-    .map((link) => ({ ...link, icon: navIcons[link.label] }));
+
+  const links = useMemo(
+    () => buildOwnerNavLinks({
+      role,
+      venueId: activeVenueId,
+      venueCount: venues.length,
+      subscription,
+    }).map((link) => ({ ...link, icon: NAV_ICONS[link.label] || Dashboard })),
+    [role, activeVenueId, venues.length, subscription],
+  );
+
   const venueHint = ownerNavHint({ role, venueId: activeVenueId, venueCount: venues.length });
   const closeNav = () => setOpen(false);
   const pageTitle = ownerPageTitle(location.pathname);
   const businessName = owner?.businessName || 'BooknPlay partner';
   const accountName = owner?.ownerName || businessName;
   const profilePhoto = mediaUrl(owner?.ownerProfileImageUrl);
-  const workspaceLinks = links.filter((link) => workspaceLabels.has(link.label));
-  const venueLinks = links.filter((link) => venueLabels.has(link.label));
   const rail = desktop && collapsed;
 
   const selectVenue = (event) => {
@@ -239,8 +260,15 @@ export default function OwnerLayout() {
           </div>
         )}
         <nav aria-label="Owner navigation">
-          <NavIndex title="Workspace" items={workspaceLinks} onNavigate={closeNav} collapsed={rail} />
-          <NavIndex title="This venue" items={venueLinks} onNavigate={closeNav} collapsed={rail} />
+          {OWNER_NAV_GROUPS.map((group) => (
+            <NavIndex
+              key={group}
+              title={group}
+              items={links.filter((link) => link.group === group)}
+              onNavigate={closeNav}
+              collapsed={rail}
+            />
+          ))}
         </nav>
         {!rail && venueHint && <p className="mx-3 mt-3 px-1 text-xs leading-5 text-muted">{venueHint}</p>}
       </div>
@@ -331,6 +359,12 @@ export default function OwnerLayout() {
           <Typography noWrap variant="caption" color="text.secondary">{isStaff ? 'Staff account' : businessName}</Typography>
         </Box>
         <Divider />
+        {!isStaff && (
+          <MenuItem onClick={() => { setAccountAnchor(null); navigate('/owner/settings'); }} sx={{ minHeight: 44 }}>
+            <ListItemIcon><Settings fontSize="small" /></ListItemIcon>
+            Settings
+          </MenuItem>
+        )}
         {!isStaff && (
           <MenuItem onClick={() => { setAccountAnchor(null); navigate('/owner/profile'); }} sx={{ minHeight: 44 }}>
             <ListItemIcon><AccountCircle fontSize="small" /></ListItemIcon>

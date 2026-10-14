@@ -3,12 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Button, Chip, LinearProgress, Skeleton } from '@mui/material';
 import {
-  Add, Archive, ArrowForward, Assessment, CalendarMonth, LocationOn, Policy, Settings, Stadium, Unarchive,
+  Add, Archive, ArrowForward, CalendarMonth, LocationOn, Policy, Settings, Stadium, Unarchive,
 } from '@mui/icons-material';
-import dayjs from 'dayjs';
 import {
   useArchiveOwnerVenue,
-  useOwnerEarnings,
   useOwnerSubscription,
   useOwnerVenues,
   useRestoreOwnerVenue,
@@ -19,26 +17,19 @@ import {
   OwnerPage,
   OwnerPageHeader,
   OwnerSectionHeader,
-  OwnerStatRow,
   OwnerStatusBadge,
   OwnerStagger,
   OwnerTabBar,
 } from '../../components/owner/OwnerDashboardUi';
-import EarningsTrendChart from '../../components/owner/EarningsTrendChart';
 import VenueCarousel from '../../components/ui/VenueCarousel';
 import EmptyState from '../../components/ui/EmptyState';
-import { todayOperations } from '../../utils/ownerOverview';
-import { reportRangeDates, REPORT_RANGE_PRESETS } from '../../utils/ownerReports';
-import { isLiveVenueStatus, isPendingVenueStatus, venueStatusLabel } from '../../utils/venueStatus';
+import { isLiveVenueStatus, venueStatusLabel } from '../../utils/venueStatus';
 import { calculateVenueSetup } from '../../utils/venueSetup';
 import {
   canCreateVenue,
   canMutateOwner,
-  daysRemaining,
   formatLimitCount,
   isOwnerSubscriptionsEnabled,
-  isTrialing,
-  planDisplayName,
   resolvePlanLimits,
 } from '../../utils/subscription';
 import { fadeUp } from '../../motion/variants';
@@ -62,21 +53,15 @@ export default function OwnerVenuesPage() {
   const [archiveTarget, setArchiveTarget] = useState(null);
   const archived = tab === 'archived';
   const query = useOwnerVenues(archived);
-  const today = dayjs().format('YYYY-MM-DD');
-  const weekRange = reportRangeDates(REPORT_RANGE_PRESETS.LAST_7_DAYS);
-  const earningsQuery = useOwnerEarnings(today, today);
-  const weekEarningsQuery = useOwnerEarnings(weekRange.from, weekRange.to, { enabled: !isStaff });
   const { data: subscription } = useOwnerSubscription();
   const archiveVenue = useArchiveOwnerVenue();
   const restoreVenue = useRestoreOwnerVenue();
   const venues = query.data || [];
-  const todayTotals = todayOperations(earningsQuery.data);
   const calendarVenue = venues.find((venue) => isLiveVenueStatus(venue.status)) || venues[0];
   const subscriptionsEnabled = isOwnerSubscriptionsEnabled();
   const mutateAllowed = !subscriptionsEnabled || canMutateOwner(subscription);
   const limits = resolvePlanLimits(subscription);
   const venueLimitOk = !subscriptionsEnabled || canCreateVenue(subscription, venues.length);
-  const trialDays = daysRemaining(subscription);
 
   const incompleteVenueData = !archived ? venues.reduce((acc, venue) => {
     if (acc) return acc;
@@ -84,47 +69,17 @@ export default function OwnerVenuesPage() {
     return setup.isComplete ? null : { venue, setup };
   }, null) : null;
 
-  const totalCourts = venues.reduce((total, venue) => total + Number(courtCount(venue)), 0);
-  const liveVenues = venues.filter((venue) => isLiveVenueStatus(venue.status)).length;
-  const pendingVenues = venues.filter((venue) => isPendingVenueStatus(venue.status)).length;
-  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
-
   return (
     <OwnerPage>
       <OwnerPageHeader
-        eyebrow={isStaff ? 'Staff overview' : 'Partner overview'}
-        title={`${greeting}, ${owner?.ownerName || (isStaff ? 'staff member' : 'partner')}.`}
-        description="Today’s confirmed bookings and gross revenue, plus the venues that still need setup."
+        eyebrow="Operations"
+        title="Venues"
+        description="Manage facilities, publish bookable spaces, and archive venues you no longer need."
         actions={(
           <>
-            {subscriptionsEnabled && subscription && isTrialing(subscription) && trialDays != null && (
-              <Chip
-                component={Link}
-                to="/owner/billing"
-                clickable
-                color="secondary"
-                label={`Trial · ${trialDays}d left`}
-                className="!font-extrabold"
-              />
-            )}
-            {subscriptionsEnabled && subscription && !isTrialing(subscription) && (
-              <Chip
-                component={Link}
-                to="/owner/billing"
-                clickable
-                variant="outlined"
-                label={planDisplayName(subscription.planCode)}
-                className="!font-extrabold"
-              />
-            )}
             {calendarVenue && !archived && (
               <Button component={Link} to={`/owner/venues/${calendarVenue.id}/calendar`} variant="outlined" startIcon={<CalendarMonth />}>
                 Open calendar
-              </Button>
-            )}
-            {!isStaff && (
-              <Button component={Link} to="/owner/reports" variant="outlined" startIcon={<Assessment />}>
-                View reports
               </Button>
             )}
             {!isStaff && mutateAllowed && venueLimitOk && (
@@ -146,68 +101,8 @@ export default function OwnerVenuesPage() {
         )}
       />
 
-      <section aria-label="Business summary" className="mt-8 border-y border-line py-8">
-        {query.isLoading || earningsQuery.isLoading ? (
-          <div>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <Skeleton variant="rounded" height={112} />
-              {!isStaff && <Skeleton variant="rounded" height={112} />}
-            </div>
-            <div className="mt-8 grid grid-cols-1 gap-6 border-t border-line pt-6 sm:grid-cols-3">
-              {[1, 2, 3].map((item) => <Skeleton key={item} variant="rounded" height={72} />)}
-            </div>
-          </div>
-        ) : (
-          <OwnerStatRow
-            items={[
-              {
-                label: 'Today’s bookings',
-                value: todayTotals ? todayTotals.bookings : '—',
-                detail: earningsQuery.isError ? 'Couldn’t load today’s totals' : 'Confirmed and completed today',
-                emphasis: true,
-              },
-              ...(!isStaff ? [{
-                label: 'Today’s revenue',
-                prefix: todayTotals ? 'LKR' : undefined,
-                value: todayTotals
-                  ? Number(todayTotals.revenue).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                  : '—',
-                detail: earningsQuery.isError ? 'Couldn’t load today’s totals' : 'Gross from those bookings',
-                emphasis: true,
-              }] : []),
-              { label: 'Venues', value: venues.length, detail: archived ? 'Archived venues' : 'Across your business' },
-              { label: 'Live venues', value: liveVenues, detail: `${pendingVenues} awaiting setup or review` },
-              { label: 'Bookable spaces', value: totalCourts, detail: 'Courts, pitches, tables and lanes' },
-            ]}
-          />
-        )}
-
-        {!isStaff && (
-          <div className="mt-8 border-t border-line pt-6">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-muted">Last 7 days</p>
-                <p className="mt-1 text-sm text-muted">Bookings and net earnings trend</p>
-              </div>
-              <Button component={Link} to="/owner/reports" size="small" endIcon={<ArrowForward />}>
-                Open reports
-              </Button>
-            </div>
-            <div className="mt-4 max-w-md">
-              {weekEarningsQuery.isLoading ? (
-                <Skeleton variant="rounded" height={56} />
-              ) : weekEarningsQuery.isError ? (
-                <p className="text-sm text-muted">Couldn’t load the weekly trend.</p>
-              ) : (
-                <EarningsTrendChart summary={weekEarningsQuery.data} compact />
-              )}
-            </div>
-          </div>
-        )}
-      </section>
-
       {incompleteVenueData && (
-        <section className="mt-6 overflow-hidden rounded-[20px] border border-lime-300 bg-lime-50 p-5 dark:border-lime-800 dark:bg-lime-950/20 sm:p-6">
+        <section className="mt-8 overflow-hidden rounded-[20px] border border-lime-300 bg-lime-50 p-5 dark:border-lime-800 dark:bg-lime-950/20 sm:p-6">
           <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -246,7 +141,7 @@ export default function OwnerVenuesPage() {
       <section className="mt-10">
         <OwnerSectionHeader
           title="Your venues"
-          description="Manage facilities, pricing and daily availability from one place."
+          description="Open a venue to manage courts, calendar, and booking policy."
           action={<span className="text-sm font-bold text-muted">{venues.length} total</span>}
         />
 

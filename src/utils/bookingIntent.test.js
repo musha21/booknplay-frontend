@@ -19,23 +19,34 @@ describe('continueAfterAuth', () => {
       continueAfterAuth({
         from: { pathname: '/checkout', state: intent },
       })
-    ).toEqual({ pathname: '/checkout', state: intent });
+    ).toEqual({ pathname: '/checkout', search: '', state: intent });
   });
 
   it('keeps the same court, date, and slots after registration', () => {
     expect(continueAfterAuth({
       reason: 'booking',
       from: { pathname: '/checkout', state: slotIntent },
-    })).toEqual({ pathname: '/checkout', state: slotIntent });
+    })).toEqual({ pathname: '/checkout', search: '', state: slotIntent });
+  });
+
+  it('preserves payment return query params after login', () => {
+    expect(continueAfterAuth({
+      reason: 'booking',
+      from: { pathname: '/payment/return', search: '?bookingId=b-1' },
+    })).toEqual({
+      pathname: '/payment/return',
+      search: '?bookingId=b-1',
+      state: undefined,
+    });
   });
 
   it('restores the saved court, date, and slots when router state is missing', () => {
     saveBookingIntent(slotIntent);
-    expect(continueAfterAuth({})).toEqual({ pathname: '/checkout', state: slotIntent });
+    expect(continueAfterAuth({})).toEqual({ pathname: '/checkout', search: '', state: slotIntent });
   });
 
   it('falls back to account when there is no booking in progress', () => {
-    expect(continueAfterAuth({})).toEqual({ pathname: '/account' });
+    expect(continueAfterAuth({})).toEqual({ pathname: '/account', search: '' });
   });
 });
 

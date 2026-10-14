@@ -3,16 +3,19 @@ import SportIcon from '../ui/SportIcon';
 import { fadeUp, reducedFade, staggerContainer } from '../../motion/variants';
 
 export default function SportCategoryButton({ sport, selected, onSelect }) {
+  const reduced = useReducedMotion();
   const label = sport.displayName || sport.name;
   const isAll = Boolean(sport.all);
   return (
-    <button
+    <motion.button
       type="button"
       aria-pressed={selected}
       aria-label={label}
       title={label}
       onClick={onSelect}
       className={`hp-sport-tile ${isAll ? 'is-all' : ''} ${selected ? 'is-active' : ''}`}
+      whileHover={reduced ? undefined : { y: -4 }}
+      whileTap={reduced ? undefined : { scale: 0.97 }}
     >
       {!isAll && (
         <span className="hp-sport-symbol" aria-hidden="true">
@@ -20,7 +23,7 @@ export default function SportCategoryButton({ sport, selected, onSelect }) {
         </span>
       )}
       <span className="hp-sport-label">{label}</span>
-    </button>
+    </motion.button>
   );
 }
 
@@ -28,7 +31,7 @@ export function SportCategoryGrid({ sports, sportId, onSelect }) {
   const reduced = useReducedMotion();
   return (
     <motion.div
-      variants={reduced ? undefined : staggerContainer(0.05)}
+      variants={reduced ? undefined : staggerContainer(0.08)}
       initial={reduced ? false : 'hidden'}
       whileInView={reduced ? undefined : 'show'}
       viewport={{ once: true, amount: 0.2 }}

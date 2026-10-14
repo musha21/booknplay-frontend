@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Graphify (generated knowledge graph)
+graphify-out/
+
+# Local scratch / exports
+tmp/
+output/
+
+# Test coverage (if generated later)
+coverage/

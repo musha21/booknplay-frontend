@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -6,6 +7,11 @@ import VenueShowcase from './VenueShowcase';
 vi.mock('motion/react', () => ({
   useReducedMotion: () => true,
   motion: { div: ({ children }) => <div>{children}</div> },
+}));
+
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+  useLocation: () => ({ pathname: '/' }),
 }));
 
 vi.mock('../ui/VenueCard', () => ({
@@ -31,8 +37,38 @@ describe('VenueShowcase', () => {
     expect(screen.getByText(/No matching venues/i)).toBeInTheDocument();
     expect(screen.getByText(/No venues matched in Katugastota\./i)).toBeInTheDocument();
 
-    const clearBtn = screen.getByRole('button', { name: /Clear filters/i });
+    const clearBtn = screen.getByRole('button', { name: /Reset filters/i });
     await userEvent.click(clearBtn);
     expect(onClear).toHaveBeenCalledOnce();
+  });
+
+  it('renders a prominent location control that triggers the handler and reflects state', async () => {
+    const onUseLocation = vi.fn();
+    const venues = [{ id: 1, name: 'Kandy venue 1' }];
+
+    const { rerender } = render(
+      <VenueShowcase venues={venues} loading={false} error={false} onRetry={vi.fn()} onClear={vi.fn()} onUseLocation={onUseLocation} />,
+    );
+
+    const locationBtn = screen.getByRole('button', { name: /use my location/i });
+    expect(locationBtn).toBeEnabled();
+    await userEvent.click(locationBtn);
+    expect(onUseLocation).toHaveBeenCalledOnce();
+
+    rerender(
+      <VenueShowcase venues={venues} loading={false} error={false} onRetry={vi.fn()} onClear={vi.fn()} onUseLocation={onUseLocation} locationStatus="loading" />,
+    );
+    expect(screen.getByRole('button', { name: /use my location/i })).toBeDisabled();
+    expect(screen.getByText('Locating…')).toBeInTheDocument();
+
+    rerender(
+      <VenueShowcase venues={venues} loading={false} error={false} onRetry={vi.fn()} onClear={vi.fn()} onUseLocation={onUseLocation} hasLocation />,
+    );
+    expect(screen.getByText('Location Active')).toBeInTheDocument();
+  });
+
+  it('does not render the location control when no handler is provided', () => {
+    render(<VenueShowcase venues={[{ id: 1, name: 'Kandy venue 1' }]} loading={false} error={false} onRetry={vi.fn()} onClear={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /use my location/i })).not.toBeInTheDocument();
   });
 });

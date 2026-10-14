@@ -44,9 +44,9 @@ export function calculateVenueSetup(venue) {
     },
     {
       id: 'pricing',
-      title: 'Space pricing grid',
+      title: 'Space pricing',
       isDone: hasPricing,
-      to: `/owner/venues/${venue.id}/courts`,
+      to: `/owner/pricing?venueId=${venue.id}`,
       label: 'Set pricing',
     },
     {

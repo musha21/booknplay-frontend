@@ -1,28 +1,43 @@
-import { createElement, useMemo, useState } from 'react';
+import { createElement, useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useVenue, useVenueAvailability } from '../hooks/useVenues';
+import { useVenue, useVenueAvailability, useVenueReviews } from '../hooks/useVenues';
 import { formatCurrency, formatTime, formatDate } from '../utils/formatters';
 import { saveBookingIntent } from '../utils/bookingIntent';
 import { resourceLabelForCourt } from '../utils/courtResource';
-import { sportIcon } from '../utils/venue';
+import { sportIcon, venueDisplayAddress, venueGoogleMapsUrl } from '../utils/venue';
+import { formatSlotReasonLabel, resolveSlotReason } from '../utils/availability';
+import { AvailabilitySlotReason } from '../constants/apiTypes';
+import { rememberVenue } from '../utils/recentlyViewed';
 import useAuthStore from '../stores/authStore';
+import useFavoritesStore from '../stores/favoritesStore';
+import VenueMap from '../components/maps/VenueMap';
+import SlingButton from '../components/ui/SlingButton';
 import { buttonPress, fadeUp, reducedFade, staggerContainer } from '../motion/variants';
 import dayjs from 'dayjs';
 import {
   CalendarMonth,
   AccessTime,
-  ArrowForward,
+  Favorite,
+  FavoriteBorder,
+  LocationOn,
+  Schedule,
 } from '@mui/icons-material';
 import {
   Button,
+  Chip,
   Skeleton,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 
 const BOOKABLE_DAYS = 30;
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const WEEKDAY_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
 function buildMonthCalendar(days) {
   if (!days.length) return { leadingBlanks: 0, cells: [], monthLabels: [] };
@@ -57,13 +72,22 @@ export default function ChooseSlotPage() {
   );
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [conflictNotice, setConflictNotice] = useState(location.state?.bookingConflict || '');
+  const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [pulling, setPulling] = useState(false);
 
   const { data: venue, isLoading: venueLoading } = useVenue(venueId);
+  const reviewsQuery = useVenueReviews(venueId);
   const isCustomer = useAuthStore((state) => state.isAuthenticated && state.role === 'CUSTOMER');
+  const saved = useFavoritesStore((state) => state.isFavorite(venueId));
+  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
   const effectiveCourtId = selectedCourtId || String(venue?.courts?.[0]?.id || '');
   const selectedCourt = venue?.courts?.find((court) => String(court.id) === String(effectiveCourtId)) || venue?.courts?.[0];
   const selectedResourceLabel = resourceLabelForCourt(selectedCourt);
   const selectedSportName = selectedCourt?.sportName || selectedCourt?.sport?.name || venue?.sportName;
+
+  useEffect(() => {
+    if (venueId) rememberVenue(venueId);
+  }, [venueId]);
 
   const {
     data: availability = [],
@@ -146,16 +170,26 @@ export default function ChooseSlotPage() {
 
   const enter = reduced ? reducedFade : fadeUp;
   const hasSelection = selectedSlots.length > 0;
+  const address = venue ? venueDisplayAddress(venue) : '';
+  const mapsUrl = venue ? venueGoogleMapsUrl(venue) : '';
+  const hours = [...(venue?.operatingHours || [])].sort(
+    (a, b) => DAYS.indexOf(a.dayOfWeek) - DAYS.indexOf(b.dayOfWeek)
+  );
+  const reviews = reviewsQuery.data || [];
+  const previewReviews = reviews.slice(0, 3);
+  const hasMoreReviews = reviews.length > 3;
+  const hasAmenities = venue?.amenities?.length > 0;
+  const hasRules = Boolean(venue?.rules?.length || venue?.additionalRules);
 
   return (
     <main className={`page-shell py-5 ${hasSelection ? 'pb-32' : 'pb-8'}`}>
       <div className="section-container space-y-4">
         <div className="flex items-center gap-2 text-sm text-muted">
-          <Link to={`/venues/${venueId}`} className="transition-colors hover:text-ink">
-            {venue?.name || 'Venue'}
+          <Link to="/#venues" className="transition-colors hover:text-ink">
+            Venues
           </Link>
           <span>/</span>
-          <span className="font-semibold text-ink">Choose Slots</span>
+          <span className="font-semibold text-ink">{venue?.name || 'Choose Slots'}</span>
         </div>
 
         <motion.div
@@ -166,7 +200,7 @@ export default function ChooseSlotPage() {
         >
           <div>
             <h1 className="customer-page-title !text-2xl">{venue?.name}</h1>
-            <p className="customer-body mt-0.5 !text-sm">{venue?.address}, {venue?.city}</p>
+            <p className="customer-body mt-0.5 !text-sm">{address || `${venue?.address || ''}${venue?.city ? `, ${venue.city}` : ''}`}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="chip-lime">
@@ -175,6 +209,22 @@ export default function ChooseSlotPage() {
             <span className="chip-navy">
               {venue?.courts?.length || 0} Bookable Spaces Available
             </span>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-canvas px-3 py-1.5 text-sm font-bold text-ink transition hover:border-navy-400"
+              onClick={() => {
+                if (!isCustomer) {
+                  navigate('/auth/login', {
+                    state: { from: { pathname: `/venues/${venueId}/slots` }, reason: 'favourite' },
+                  });
+                  return;
+                }
+                toggleFavorite(venueId, venue?.name);
+              }}
+            >
+              {saved ? <Favorite className="text-lime-600" fontSize="small" /> : <FavoriteBorder fontSize="small" />}
+              {saved ? 'Saved' : 'Save favourite'}
+            </button>
           </div>
         </motion.div>
 
@@ -326,6 +376,10 @@ export default function ChooseSlotPage() {
                   Available
                 </span>
                 <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded border border-amber-400 bg-amber-100" />
+                  Held
+                </span>
+                <span className="flex items-center gap-1.5">
                   <span className="inline-block h-2.5 w-2.5 rounded border border-line bg-canvas" />
                   Booked / Past
                 </span>
@@ -371,6 +425,11 @@ export default function ChooseSlotPage() {
                     (s) => s.courtId === slot.courtId && s.startTime === slot.startTime
                   );
                   const isAvailable = slot.available;
+                  const reason = resolveSlotReason(slot);
+                  const isHeld = !isAvailable && reason === AvailabilitySlotReason.HELD;
+                  const unavailableLabel = isAvailable
+                    ? formatCurrency(slot.price)
+                    : formatSlotReasonLabel(reason);
 
                   return (
                     <motion.button
@@ -395,14 +454,16 @@ export default function ChooseSlotPage() {
                           ? 'border-lime-500 bg-lime-400 font-bold text-navy-900 shadow-sm'
                           : isAvailable
                             ? 'border-line bg-surface text-ink hover:border-navy-900 hover:shadow-sm'
-                            : 'cursor-not-allowed border-line bg-canvas text-muted opacity-60'
+                            : isHeld
+                              ? 'cursor-not-allowed border-amber-300 bg-amber-50 text-amber-900 opacity-90'
+                              : 'cursor-not-allowed border-line bg-canvas text-muted opacity-60'
                       }`}
                     >
                       <div className="text-sm font-bold">
                         {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
                       </div>
                       <div className="mt-0.5 text-xs font-semibold">
-                        {isAvailable ? formatCurrency(slot.price) : 'Unavailable'}
+                        {unavailableLabel}
                       </div>
                     </motion.button>
                   );
@@ -411,7 +472,155 @@ export default function ChooseSlotPage() {
             )}
           </motion.div>
         </div>
+
+        {venue && (
+          <motion.section
+            variants={enter}
+            initial="hidden"
+            animate="show"
+            className="grid gap-4 lg:grid-cols-[1fr_300px]"
+            aria-label="Venue information"
+          >
+            <div className="customer-panel space-y-6 p-4 sm:p-5">
+              {hasAmenities && (
+                <div>
+                  <h2 className="customer-card-title">Amenities</h2>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {venue.amenities.map((item) => (
+                      <Chip key={item} label={item} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {hasRules && (
+                <div>
+                  <h2 className="customer-card-title">House rules</h2>
+                  <ul className="customer-body mt-3 list-disc space-y-1 pl-5">
+                    {(venue.rules || []).map((rule) => (
+                      <li key={rule}>{rule}</li>
+                    ))}
+                  </ul>
+                  {venue.additionalRules && (
+                    <p className="customer-body mt-3">{venue.additionalRules}</p>
+                  )}
+                </div>
+              )}
+              <div>
+                <h2 className="customer-card-title">Reviews</h2>
+                {reviews.length === 0 ? (
+                  <p className="customer-body mt-3">No public reviews yet.</p>
+                ) : (
+                  <>
+                    <ul className="mt-4 space-y-3">
+                      {previewReviews.map((review) => (
+                        <li key={review.id} className="rounded-2xl border border-line p-4">
+                          <p className="font-bold">
+                            {review.customerName} · {review.rating}/5
+                          </p>
+                          {review.comment ? (
+                            <p className="customer-body mt-1">{review.comment}</p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                    {hasMoreReviews && (
+                      <Button
+                        type="button"
+                        variant="text"
+                        className="!mt-3 !font-bold !normal-case"
+                        onClick={() => setReviewsOpen(true)}
+                      >
+                        View all reviews ({reviews.length})
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            <aside className="space-y-4">
+              <div className="customer-panel overflow-hidden p-0">
+                <VenueMap
+                  className="h-56 w-full"
+                  venues={[venue]}
+                  selectedId={venue.id}
+                  center={{ lat: venue.latitude, lng: venue.longitude }}
+                  zoom={15}
+                />
+                {mapsUrl && (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block px-5 py-3 text-sm font-bold text-lime-700"
+                  >
+                    Open in Google Maps
+                  </a>
+                )}
+              </div>
+              <div className="customer-panel p-5">
+                <h2 className="customer-card-title">Venue details</h2>
+                <dl className="customer-body mt-4 space-y-4 !text-sm">
+                  <div className="flex gap-3">
+                    <LocationOn className="shrink-0 text-lime-600" />
+                    <div>
+                      <dt className="font-bold text-ink">Location</dt>
+                      <dd className="text-muted">{address || 'Address not published yet.'}</dd>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Schedule className="shrink-0 text-lime-600" />
+                    <div>
+                      <dt className="font-bold text-ink">Opening hours</dt>
+                      <dd className="text-muted">
+                        {hours.length
+                          ? hours.map((row) => (
+                              <div key={row.id || row.dayOfWeek}>
+                                {String(row.dayOfWeek).slice(0, 3)}{' '}
+                                {row.closed
+                                  ? 'Closed'
+                                  : `${formatTime(row.openTime)} – ${formatTime(row.closeTime)}`}
+                              </div>
+                            ))
+                          : 'Hours not published yet.'}
+                      </dd>
+                    </div>
+                  </div>
+                </dl>
+              </div>
+            </aside>
+          </motion.section>
+        )}
       </div>
+
+      <Dialog
+        open={reviewsOpen}
+        onClose={() => setReviewsOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        slotProps={{ paper: { className: '!rounded-[18px] !border !border-line !bg-surface' } }}
+      >
+        <DialogTitle className="customer-card-title">All reviews</DialogTitle>
+        <DialogContent>
+          <ul className="space-y-3">
+            {reviews.map((review) => (
+              <li key={review.id} className="rounded-2xl border border-line p-4">
+                <p className="font-bold">
+                  {review.customerName} · {review.rating}/5
+                </p>
+                {review.comment ? (
+                  <p className="customer-body mt-1">{review.comment}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+        <DialogActions className="!border-t !border-line !px-6 !py-4">
+          <Button onClick={() => setReviewsOpen(false)} className="!font-bold !normal-case">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <AnimatePresence>
         {hasSelection && (
@@ -443,26 +652,29 @@ export default function ChooseSlotPage() {
                 </div>
               </div>
 
-              <Button
-                variant="contained"
-                onClick={handleProceedToCheckout}
-                endIcon={<ArrowForward />}
-                sx={{
-                  backgroundColor: '#84cc16',
-                  color: '#061032',
-                  fontWeight: '800',
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: '16px',
-                  fontSize: '1rem',
-                  textTransform: 'none',
-                  '&:hover': {
-                    backgroundColor: '#65a30d',
-                  },
-                }}
-              >
-                {isCustomer ? 'Continue to checkout' : 'Sign in to book'}
-              </Button>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end">
+                  <span className="text-base font-extrabold text-lime-400">
+                    {pulling ? 'Ready to play' : isCustomer ? 'Continue to checkout' : 'Sign in to book'}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-400">Hold & pull</span>
+                </div>
+                <SlingButton
+                  onSend={handleProceedToCheckout}
+                  onPullStateChange={({ held }) => setPulling(held)}
+                  padColor="#84cc16"
+                  iconColor="#061032"
+                  accentColor="#bef264"
+                  wellColor="#0b1220"
+                  bandColor="#334155"
+                  size={56}
+                  axis="horizontal"
+                  tapSends
+                  ariaLabel={
+                    pulling ? 'Ready to play' : isCustomer ? 'Continue to checkout' : 'Sign in to book'
+                  }
+                />
+              </div>
             </div>
           </motion.div>
         )}

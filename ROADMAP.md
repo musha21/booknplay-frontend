@@ -1,4 +1,1286 @@
-# BooknPlay Development Roadmap
+# BooknPlay Production Roadmap
+
+Last audited: 2026-10-06
+
+## Production Readiness Score
+
+Frontend: 58%  
+Backend: 42%  
+Database: 25%  
+Security: 18%  
+Payments: 20%  
+Infrastructure: 8%  
+Testing: 25%
+
+Overall production readiness: 28%
+
+The score uses an evidence checklist for each area: complete control = 1 point, partial or unverified control = 0.5, and failed or absent control = 0. A critical P0 failure caps its category at 50%. The overall score is the rounded equal-weight average of the seven category scores. A passing build alone does not make an area production-ready.
+
+## Audit Scope and Evidence
+
+This audit covers the current working trees, including uncommitted changes, in both repositories:
+
+- Frontend: `C:\Users\Musharaf\Downloads\booknplay frontend\booknplay-frontend`
+- Backend: `C:\Users\Musharaf\Downloads\booknplay\booknplay`
+- Intended public domain: `https://booknplay.lk`
+- Audit date and timezone: 2026-10-06, Asia/Colombo
+
+No deployment, credential change, production data operation, or application-code change was performed. Live PayHere, SMSLenz, DNS, hosting, physical-device, and browser-farm checks remain **⚠️ NEEDS VERIFICATION**.
+
+### Checks executed
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Frontend production build | ✅ Passed | `npm run build`; no source maps emitted. Largest chunk: `react-apexcharts` 954.13 kB minified / 273.92 kB gzip. |
+| Frontend lint | ❌ Failed | `npm run lint`: 5 errors and 2 warnings. |
+| Frontend tests | ⚠️ Timed out | `npm test -- --reporter=dot` did not complete within 120 seconds. |
+| Frontend production dependency audit | ✅ Passed | `npm audit --omit=dev`: 0 vulnerabilities across 137 production dependencies. |
+| Frontend full dependency audit | ❌ Failed | 14 advisories: 1 critical, 10 high, 2 moderate, 1 low; the critical advisory is in the Vitest development toolchain. |
+| Backend tests | ❌ Failed | Surefire reports: 116 tests, 3 failures, 5 errors, 0 skipped. |
+| Backend test isolation | ❌ Failed | `@SpringBootTest` connected to local MySQL 8.0.42 and Hibernate issued schema-altering statements because no test profile exists. No rollback was attempted. |
+| CORS probe | ❌ Failed | A preflight from `https://evil.example` was accepted with `Access-Control-Allow-Credentials: true`. |
+| Local public API | ✅ Responded | `GET /api/v1/public/sports` returned HTTP 200. |
+| Swagger exposure | ❌ Public | `GET /swagger-ui/index.html` returned HTTP 200 without authentication. |
+| Health endpoint | ❌ Not established | No Actuator dependency or production-safe health exposure is configured. |
+| Browser/device testing | ⚠️ NEEDS VERIFICATION | No Chrome/Safari/Edge/Android/iPhone matrix was executed. |
+
+# Production Readiness & Launch Roadmap
+
+# 🚨 P0 — MUST FIX BEFORE PRODUCTION
+
+### PROD-P0-001 — Remove and rotate committed secrets
+
+**Area:** Security / Backend / Source Control  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+The tracked default backend configuration contains literal database, JWT-signing, mail username, and mail password values. A tracked debug log is also present. Deleting values only from the latest revision would not remove them from Git history.
+
+**Evidence**
+
+- Backend `src/main/resources/application.properties`
+- Backend `debug-5b0412.log`
+- Backend `.gitignore`
+
+**Problem**
+
+Anyone with repository or history access may be able to use exposed credentials, forge JWTs, access mail, or connect to the database. TRACE bind logging and committed logs increase the chance of personal or authentication data entering source control.
+
+**Required change**
+
+Replace literal secrets with environment or secret-manager references; rotate the database password, JWT secret, and mail credentials; stop tracking the debug log; scan all Git history and artifacts; purge exposed values using a coordinated history-rewrite procedure; and update ignore rules and secret scanning. Never record replacement values in this roadmap.
+
+**Verification**
+
+Secret scanning passes across the full history, the affected credentials have documented rotation timestamps, startup succeeds using injected secrets, old credentials fail, and no tracked file contains a live secret.
+
+### PROD-P0-002 — Introduce strict environment profiles and production URL guards
+
+**Area:** Backend / Frontend / Infrastructure  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+There is one backend `application.properties`, no production profile, and several localhost or PayHere sandbox defaults. The frontend silently falls back to `http://localhost:8080/api/v1` when `VITE_API_BASE_URL` is absent. User-facing checkout pages explicitly say “sandbox.”
+
+**Evidence**
+
+- Frontend `src/lib/axios.js`, `src/utils/mediaUrl.js`, `.env.example`
+- Frontend `src/pages/CheckoutPage.jsx`, `src/pages/PaymentReturnPage.jsx`, `src/pages/account/HelpPage.jsx`
+- Backend `src/main/resources/application.properties`
+- Backend `PayHereConfigGuard.java`, `PaymentServiceImpl.java`, `PayHereRefundClientImpl.java`
+
+**Problem**
+
+A production build can call a visitor's localhost, use HTTP from an HTTPS page, or direct money flows to sandbox endpoints. Missing configuration can degrade silently rather than stopping deployment.
+
+**Required change**
+
+Create explicit dev, test, and prod profiles. Keep safe local defaults only in dev. Require production database, JWT, frontend/API origins, upload storage, mail, PayHere, and SMS configuration. Make production startup and the frontend build fail when required values are absent, non-HTTPS, localhost, ngrok, or sandbox values.
+
+**Verification**
+
+The prod profile starts only with a complete production environment; a production frontend build without its API URL fails; repository-wide production scans find no active localhost/ngrok/sandbox dependency; and an HTTPS deployment has no mixed content.
+
+### PROD-P0-003 — Replace automatic schema and startup data mutation with migrations
+
+**Area:** Database / Backend  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+Hibernate uses `ddl-auto=update`. Application runners execute raw `ALTER TABLE`, scan and mutate user phones, activate draft/pending venues with courts, and overwrite subscription plan definitions on every startup.
+
+**Evidence**
+
+- Backend `src/main/resources/application.properties`
+- `BookingSlotUniqueSchemaFix.java`
+- `BookingCustomerNullableSchemaFix.java`
+- `UserPhoneBackfillRunner.java`
+- `CatalogDataSeeder.java`
+- `SubscriptionPlanSeeder.java`
+
+**Problem**
+
+Starting or testing the application can mutate schema and business data without review. Venue approval can be bypassed, admin-edited plan pricing can be overwritten, and failed deployments cannot be reasoned about or rolled back safely.
+
+**Required change**
+
+Adopt Flyway with a baseline of the real schema; convert both schema-fix runners and one-time backfills into versioned, reviewed migrations; set production Hibernate mode to `validate`; remove automatic venue activation; make reference-data seeding idempotent and profile-scoped; and preserve admin-managed plan values unless changed through an explicit migration or admin action.
+
+**Verification**
+
+A copy of production schema upgrades from baseline using Flyway, repeated starts cause no DDL or business-data changes, pending venues remain pending, plan edits survive restarts, and migration rollback/forward-fix procedures are rehearsed.
+
+### PROD-P0-004 — Isolate tests from developer and production databases
+
+**Area:** Testing / Database / CI  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+There is no `src/test/resources` database configuration. The Spring context test inherited the default MySQL configuration and issued `ALTER TABLE` statements during this audit.
+
+**Evidence**
+
+- Backend `src/test/java/lk/booknplay/BooknplayApplicationTests.java`
+- Backend Surefire report `target/surefire-reports/TEST-lk.booknplay.BooknplayApplicationTests.xml`
+- Backend `src/main/resources/application.properties`
+
+**Problem**
+
+An automated test can corrupt a developer, staging, or production-like database. CI cannot be trusted or safely repeated.
+
+**Required change**
+
+Create an isolated test profile using a disposable database with schema behavior matching MySQL where required. Force tests to refuse non-test JDBC URLs, disable production runners in tests, and execute integration tests against an ephemeral MySQL container when dialect accuracy matters.
+
+**Verification**
+
+The complete backend suite runs twice against a newly created disposable database, no external database receives connections or schema changes, and CI destroys the test database after completion.
+
+### PROD-P0-005 — Restrict CORS and public attack surface
+
+**Area:** Security / Backend  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+CORS allows every origin pattern with credentials, headers, and mutation methods. Swagger is publicly reachable. The generic webhook route remains public even though its service currently rejects calls.
+
+**Evidence**
+
+- Backend `CorsConfig.java`
+- Backend `SecurityConfig.java`
+- Backend `PaymentWebhookController.java`
+- Read-only preflight probe accepting `https://evil.example`
+
+**Problem**
+
+Untrusted websites can make credentialed cross-origin requests, and public API metadata increases reconnaissance exposure. Broad public webhook routing expands the attack surface.
+
+**Required change**
+
+Allow only `https://booknplay.lk` and explicitly approved HTTPS subdomains in production; keep local origins dev-only; remove unused public webhook routes; restrict or disable Swagger in production; and add automated CORS/security route tests.
+
+**Verification**
+
+Approved origins pass preflight, hostile origins receive no CORS permission, credentialed requests are limited to approved origins, Swagger is unavailable publicly, and only required webhook endpoints remain anonymous.
+
+### PROD-P0-006 — Complete PayHere live configuration and domain verification
+
+**Area:** Payment / Infrastructure  
+**Status:** ⚠️ Needs Verification  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+Checkout, refund, configuration guidance, and visible UI are designed around PayHere sandbox. Production merchant registration, live keys, live endpoints, and `booknplay.lk` URLs are not represented by a verified production profile.
+
+**Evidence**
+
+- Backend `src/main/resources/application.properties`
+- Backend `payhere.sandbox.env.example`
+- Backend `PayHereConfigGuard.java`, `PayHereCheckoutController.java`
+- Frontend checkout, return, help, and booking hooks
+
+**Problem**
+
+Real payments may fail, be sent to sandbox, or return to unreachable/local URLs. Merchant-secret/domain mismatch will invalidate hashes and callbacks.
+
+**Required change**
+
+Provision and verify the live merchant account and refund API application. Configure live checkout/OAuth/refund endpoints, live merchant ID and secrets, registered domain, HTTPS notify URL, and exact return/cancel URLs. Separate sandbox and live config and copy. Do not place private values in Vite variables.
+
+**Verification**
+
+PayHere confirms the production domain; configuration guards identify live mode; one approved low-value live success, failure, cancellation, duplicate notification, and refund test completes with reconciled records.
+
+### PROD-P0-007 — Make PayHere webhook validation authoritative and idempotent
+
+**Area:** Payment / Backend / Database  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+Booking and subscription callbacks verify the PayHere signature but calculate it using the merchant ID supplied by the payload and do not compare callback merchant ID, amount, or currency with stored values. Duplicate-success checks are status-based and transitions are not protected by a row lock/version.
+
+**Evidence**
+
+- Backend `PaymentServiceImpl.processPayHereNotify`
+- Backend `OwnerSubscriptionServiceImpl.confirmPayHereNotify`
+- Backend `PayHereHash.java`
+- Backend `Payment.java`, `SubscriptionPayment.java`
+
+**Problem**
+
+A valid callback for an incorrect amount/currency or an unexpected merchant configuration can confirm a booking or paid plan. Concurrent/replayed callbacks can race and create inconsistent state.
+
+**Required change**
+
+Require the configured merchant ID, parse amounts as decimal minor-safe values, require exact stored amount and currency, validate order ownership and expected current state, lock the payment/order row, store a unique gateway transaction ID and webhook event record, and return idempotent success for exact duplicates while rejecting conflicting replays.
+
+**Verification**
+
+Integration tests cover invalid signature, wrong merchant, under/overpayment, wrong currency, unknown order, duplicate callback, conflicting replay, concurrent callbacks, and success after restart for both bookings and subscriptions.
+
+### PROD-P0-008 — Close the late-webhook double-booking race
+
+**Area:** Booking / Database / Payment  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+Booking creation uses serializable transactions, a pessimistic court lock, overlap checks, and customer idempotency. PayHere confirmation does not acquire the same court lock. After a hold expires, a new booking and a late success callback can race. The generated unique key represents the booking envelope, not each discrete selected slot.
+
+**Evidence**
+
+- Backend `BookingServiceImpl.createBooking`
+- Backend `OwnerCalendarServiceImpl.createWalkIn`
+- Backend `CourtRepository.findByIdWithLock`
+- Backend `BookingHoldExpiryJob.java`
+- Backend `PaymentServiceImpl.hasCompetingHold` and `confirmPaid`
+- Backend `BookingSlotUniqueSchemaFix.java`, `BookingSlot.java`
+
+**Problem**
+
+Concurrent transactions can confirm overlapping bookings, especially for gapped or partially overlapping selections, causing financial and operational harm.
+
+**Required change**
+
+Acquire the same court lock for create, expiry-sensitive confirmation, owner walk-in, and relevant status transitions. Model bookable slot identity in migration-managed columns that support a database uniqueness guarantee for active holds/confirmed bookings. Define how late paid callbacks are atomically failed and queued for refund.
+
+**Verification**
+
+A MySQL concurrency test sends simultaneous customer/customer, customer/walk-in, expired-hold/new-booking, and late-webhook/new-booking attempts; exactly one active reservation remains per court slot and every charged loser has a recoverable refund record.
+
+### PROD-P0-009 — Reconcile cancellation policy and refund semantics
+
+**Area:** Payment / Backend / Frontend / Product  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+The frontend promises cancellation within one hour after booking for a full refund and says cancellation is unavailable afterward. It stores `{hoursBeforeDeadline: 1, refundPercentage: 100}`. The backend interprets the hour as one hour before the booking start and then applies the percentage after that deadline, allowing a full refund until play begins. Backend code and tests also support partial refunds while owner UI says PayHere partial refunds are unavailable.
+
+**Evidence**
+
+- Frontend `BookingPolicyForm.jsx`, `bookingPolicy.js`, `CheckoutPage.jsx`, `HelpPage.jsx`
+- Backend `CancellationPolicy.java`, `CancellationPolicyRequest.java`
+- Backend `BookingServiceImpl.quoteBooking` and `buildCancellationPreview`
+- Backend `PayHereRefundCancelTest.java`
+
+**Problem**
+
+Customers, owners, and the payment implementation apply different money rules. This creates incorrect refunds, misleading checkout terms, and legal/support exposure.
+
+**Required change**
+
+Obtain one approved business rule, name every timestamp unambiguously, represent it in one server-authoritative policy model, snapshot it onto each booking, enforce it identically in quote/preview/cancel, and generate all frontend wording from the returned policy. Remove partial-refund behavior if PayHere/business policy does not support it.
+
+**Verification**
+
+Contract tests cover boundary instants, timezone, before/after deadline, no-show, owner cancellation, disabled cancellation, and legacy snapshots; displayed wording and charged/refunded amounts match the same policy.
+
+### PROD-P0-010 — Add durable refund state and recovery
+
+**Area:** Payment / Backend / Operations  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+Normal cancellation calls PayHere before persisting cancellation. Conflict refunds do not create a durable refund record, and a failed automatic refund records only a failed payment state. Refund status is stored as free text with no retry scheduling or reconciliation workflow.
+
+**Evidence**
+
+- Backend `BookingServiceImpl.cancelConfirmedBooking`
+- Backend `PaymentServiceImpl.failAndRefundConflict`
+- Backend `PayHereRefundClientImpl.java`
+- Backend `Refund.java`
+
+**Problem**
+
+A timeout after PayHere accepts a refund can leave the platform uncertain, cause a duplicate retry, or lose the obligation to return money. Operations cannot reliably identify or recover failures.
+
+**Required change**
+
+Create a refund state machine (`REQUESTED`, `PROCESSING`, `SUCCEEDED`, `FAILED`, `REQUIRES_RECONCILIATION`), persist the intent before the external call, use a stable idempotency/reference strategy, capture provider responses safely, retry only known-safe failures, and expose failed/reconciliation queues to admin operations.
+
+**Verification**
+
+Tests simulate provider success, rejection, timeout-before-response, timeout-after-acceptance, duplicate cancellation, process crash, and retry; no duplicate refund occurs and every obligation is queryable.
+
+### PROD-P0-011 — Harden authentication, abuse controls, errors, and logs
+
+**Area:** Security / Backend  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+OTP generation, hashing, expiry, cooldown, and attempt limits exist, but there is no implemented IP/phone/user rate-limit filter despite Bucket4j dependencies. Password reset does not revoke existing refresh tokens. Refresh tokens are stored plaintext. Generic exception responses can expose internal exception messages, and Hibernate bind values are logged at TRACE.
+
+**Evidence**
+
+- Backend `OtpServiceImpl.java`, `PhoneAuthServiceImpl.java`
+- Backend `RefreshToken.java` and auth service implementations
+- Backend `GlobalExceptionHandler.java`
+- Backend `src/main/resources/application.properties`
+- Backend `pom.xml`
+
+**Problem**
+
+Attackers can brute-force or flood public endpoints, retained sessions survive password reset, stolen database tokens can be used directly, and internal/PII values may appear in responses or logs.
+
+**Required change**
+
+Implement distributed rate limits and safe proxy-IP handling; rotate and hash refresh tokens; revoke all sessions after password reset and security-sensitive account changes; return stable public error codes without internal messages; disable SQL/bind logging in production; sanitize authentication/provider logs; and configure explicit CSP, HSTS, Referrer-Policy, frame, and content-type headers at the edge/backend.
+
+**Verification**
+
+Security tests prove rate limits, session revocation, token rotation/reuse detection, safe 4xx/5xx bodies, and absence of passwords, OTPs, tokens, SQL parameters, or secrets from logs.
+
+### PROD-P0-012 — Establish a repeatable, observable, recoverable release platform
+
+**Area:** Infrastructure / Testing / Operations  
+**Status:** ❌ Not Started  
+**Priority:** P0  
+**Risk:** Critical
+
+**Current situation**
+
+There is no Docker/deployment definition, CI workflow, health endpoint, backup configuration, restore evidence, monitoring setup, or documented production rollback. Backend tests fail; frontend lint fails; frontend tests time out.
+
+**Evidence**
+
+- No `.github/workflows`, Dockerfile, Compose, hosting, or migration files in either repository
+- Frontend lint/test/build results in this audit
+- Backend Surefire reports in this audit
+- Backend `pom.xml` has no Actuator dependency
+
+**Problem**
+
+The application cannot be released reproducibly or safely monitored and recovered. Failed checks do not prevent deployment, and there is no proof that data can be restored.
+
+**Required change**
+
+Provision HTTPS frontend/API hosting, private managed MySQL with least privilege and TLS, persistent media storage, automated encrypted backups and restore drills, safe health/readiness endpoints, uptime/error/payment/refund/SMS monitoring, CI gates, immutable artifacts, smoke tests, and a rollback procedure. Fix all failing checks before enabling deployment.
+
+**Verification**
+
+CI passes from a clean clone, deployment uses the same tested artifacts, health and alerts work, a backup restores into an isolated database, smoke tests pass, and a staged rollback restores the prior application without blindly reversing migrations.
+
+# 🟠 P1 — FIX BEFORE OR IMMEDIATELY AFTER LAUNCH
+
+### PROD-P1-001 — Restore clean frontend quality gates
+
+**Area:** Frontend / Testing  
+**Status:** ❌ Not Started  
+**Priority:** P1  
+**Risk:** High
+
+**Current situation**
+
+Lint reports five errors and two warnings, including synchronous state updates in effects, an unused import, and a constant nullish expression. Vitest does not terminate within two minutes. The full npm audit reports 14 development-tool advisories.
+
+**Evidence**
+
+- `LinkPhonePanel.jsx`, `FavouritesPage.jsx`, `AdminPlansPage.jsx`
+- `OwnerCalendarPage.jsx`, `OwnerProfilePage.jsx`, `OwnerTeamPage.jsx`
+- `package.json`, `package-lock.json`, `src/test/setup.js`
+
+**Problem**
+
+CI cannot provide fast, trustworthy feedback, and test/lint regressions can ship unnoticed.
+
+**Required change**
+
+Fix lint findings, identify the hanging suite/open handle, set bounded test timeouts, upgrade vulnerable dev dependencies without force-fixing, and pin a stable Node/npm version in CI.
+
+**Verification**
+
+Lint, all frontend tests, build, and full audit policy complete reliably from a clean install on Windows and CI Linux.
+
+### PROD-P1-002 — Replace process-local checkout sessions and add provider timeouts
+
+**Area:** Backend / Payment / Reliability  
+**Status:** ❌ Not Started  
+**Priority:** P1  
+**Risk:** High
+
+**Current situation**
+
+PayHere checkout sessions live only in a `ConcurrentHashMap`; restart or multi-instance routing loses them. `RestClient.Builder` has no explicit connect/read timeouts.
+
+**Evidence**
+
+- Backend `PayHereCheckoutStore.java`
+- Backend `HttpClientConfig.java`
+- Backend `SmsLenzServiceImpl.java`, `PayHereRefundClientImpl.java`
+
+**Problem**
+
+Checkout can break during deployment, and provider calls can occupy request/transaction threads indefinitely.
+
+**Required change**
+
+Persist short-lived checkout state or generate it safely from durable records; make tokens single-purpose and expiring; add bounded provider timeouts; and define retry rules that never duplicate payments/refunds/SMS.
+
+**Verification**
+
+Checkout survives restart and multi-instance routing, expired/replayed tokens fail safely, and provider timeout tests finish within configured limits.
+
+### PROD-P1-003 — Make notifications durable and observable
+
+**Area:** Backend / Notifications  
+**Status:** ❌ Not Started  
+**Priority:** P1  
+**Risk:** High
+
+**Current situation**
+
+Booking SMS/email failures are caught so they do not roll back bookings, but sends are synchronous and failures are only logged. One notification unit test disagrees with current walk-in SMS behavior.
+
+**Evidence**
+
+- Backend `NotificationServiceImpl.java`
+- Backend `NotificationServiceImplTest.java`
+- Backend `SmsLenzServiceImpl.java`
+
+**Problem**
+
+Slow providers increase API latency, and failed confirmations have no retry or operations queue.
+
+**Required change**
+
+Commit booking/payment state first, enqueue notification jobs after commit, record delivery attempts/status, use bounded retries and dead-letter handling, and resolve the intended walk-in behavior in code and tests.
+
+**Verification**
+
+Booking succeeds when providers are down, failed notifications are visible and retryable, duplicates are suppressed, and the notification suite passes.
+
+### PROD-P1-004 — Secure and externalize media storage
+
+**Area:** Backend / Infrastructure / Security  
+**Status:** ❌ Not Started  
+**Priority:** P1  
+**Risk:** High
+
+**Current situation**
+
+Uploads are stored on local disk, validated only by the client-supplied MIME type, and served publicly. Persistence, backup, malware/content verification, cache policy, and orphan cleanup are not defined.
+
+**Evidence**
+
+- Backend `FileStorageServiceImpl.java`, `WebConfig.java`
+- Backend upload controllers and multipart settings
+
+**Problem**
+
+Deployments can lose media, multiple instances can disagree, and disguised or oversized content can create security/availability issues.
+
+**Required change**
+
+Use persistent object storage or a backed shared volume; verify magic bytes and decoded dimensions; re-encode images; set safe content/cache headers; add quotas and lifecycle cleanup; and back up metadata/storage consistently.
+
+**Verification**
+
+Valid images survive redeploys, invalid/polyglot files are rejected, multi-instance reads agree, and restore testing includes media.
+
+### PROD-P1-005 — Review indexes, query bounds, and pagination
+
+**Area:** Database / Performance  
+**Status:** ⚠️ Needs Verification  
+**Priority:** P1  
+**Risk:** High
+
+**Current situation**
+
+Some booking/OTP/quote indexes and paginated APIs exist, but most entity query dimensions have no explicit migration-managed indexes. Calendar, earnings, holds, startup backfills, galleries, payouts, and homepage versions use unbounded lists. Request page size has no documented cap.
+
+**Evidence**
+
+- Backend repositories, especially `BookingRepository.java`, `VenueRepository.java`, and calendar/maintenance repositories
+- Backend entity `@Table` declarations
+- `spring.jpa.open-in-view=false`
+
+**Problem**
+
+Data growth may cause scans, memory spikes, lock contention, and public API abuse.
+
+**Required change**
+
+Capture real query plans; add only indexes justified by predicates and ordering; cap page size/date ranges; batch hold expiry/backfills; review N+1 behavior; and load-test representative data volumes.
+
+**Verification**
+
+EXPLAIN plans use intended indexes, endpoints enforce bounds, query counts are measured, and p95 latency meets an agreed capacity target.
+
+### PROD-P1-006 — Improve frontend failure handling and session containment
+
+**Area:** Frontend / Security / UX  
+**Status:** 🟡 In Progress  
+**Priority:** P1  
+**Risk:** High
+
+**Current situation**
+
+Axios has a timeout, refresh queue, and 401 flow; checkout handles conflict/gone errors. Other status/network behavior is page-specific. Access and refresh tokens are duplicated in persisted Zustand and localStorage, increasing XSS exposure.
+
+**Evidence**
+
+- Frontend `src/lib/axios.js`, `src/stores/authStore.js`, `src/lib/queryClient.js`
+- Frontend hooks and mutation handlers
+
+**Problem**
+
+Users receive inconsistent retry/error experiences, and any successful XSS can steal long-lived tokens.
+
+**Required change**
+
+Centralize safe error normalization for 400/403/404/409/410/422/429/5xx/network/timeout cases; add an application error boundary and offline messaging; remove duplicate token stores; and evaluate secure, SameSite, HttpOnly refresh cookies with short-lived in-memory access tokens.
+
+**Verification**
+
+Automated UI tests cover each error class and token expiry; private cached data clears on logout/role change; refresh tokens are not browser-script readable if cookie migration is adopted.
+
+### PROD-P1-007 — Reduce frontend payload and image weight
+
+**Area:** Frontend / Performance  
+**Status:** ❌ Not Started  
+**Priority:** P1  
+**Risk:** Medium
+
+**Current situation**
+
+Route lazy loading exists, but the chart chunk is 954.13 kB minified. Shipped images include a 2.1 MB hero, 1.6 MB banner, and 604 kB logo; duplicate source images also exist.
+
+**Evidence**
+
+- Build output from 2026-10-06
+- Frontend `src/assets/brand`
+- `HomePage.jsx`, `MobileAppBanner.jsx`, `BrandLogo.jsx`
+
+**Problem**
+
+Mobile users face slow first render, unnecessary bandwidth, and layout/performance degradation.
+
+**Required change**
+
+Convert responsive imagery to AVIF/WebP, provide dimensions/srcset, remove unused duplicates, lazy-load below-the-fold images, and isolate charts to reports routes or replace oversized chart dependencies where justified.
+
+**Verification**
+
+Bundle warnings are resolved or budgeted, representative mobile Lighthouse runs meet agreed LCP/CLS targets, and visual regression tests pass.
+
+### PROD-P1-008 — Complete SEO, accessibility, responsive, and browser verification
+
+**Area:** Frontend / QA  
+**Status:** ⚠️ Needs Verification  
+**Priority:** P1  
+**Risk:** Medium
+
+**Current situation**
+
+The base page has a title, description, favicon, and manifest, and inspected image tags have alt attributes. There is no wildcard 404 route, canonical/OpenGraph metadata, robots.txt, or sitemap. Modal focus, keyboard operation, contrast, responsive layouts, and target browsers were not fully tested.
+
+**Evidence**
+
+- Frontend `index.html`, `public`, `src/App.jsx`
+- Frontend page/layout/dialog components
+
+**Problem**
+
+Public discovery and essential user flows may fail for assistive technology, small screens, Safari, or direct invalid URLs.
+
+**Required change**
+
+Add a real 404 route, canonical/OG metadata, robots and sitemap strategy; run automated and manual accessibility checks; verify focus restoration/live announcements; and execute the critical flows on Chrome, Edge, Safari, Android, iPhone, mobile, tablet, and desktop.
+
+**Verification**
+
+Browser/device evidence is recorded, critical WCAG issues are closed, keyboard-only booking works, and public metadata validates against the production domain.
+
+### PROD-P1-009 — Define supported map/geocoding operations
+
+**Area:** Frontend / External Services / Privacy  
+**Status:** ⚠️ Needs Verification  
+**Priority:** P1  
+**Risk:** Medium
+
+**Current situation**
+
+Google Maps SDK/API keys are not used. Venue management uses Leaflet, public OpenStreetMap tiles, browser-side Nominatim requests, and marker images from unpkg; venue detail provides outbound Google Maps links.
+
+**Evidence**
+
+- Frontend `LocationPicker.jsx`
+- Frontend `venue.js`, `VenueDetailPage.jsx`
+- `leaflet` and `react-leaflet` dependencies
+
+**Problem**
+
+Public community services/CDNs may not meet production traffic, attribution, rate, privacy, or availability requirements.
+
+**Required change**
+
+Review OSM tile and Nominatim usage policies, choose a production provider or controlled proxy, add request throttling/cache/error fallback, self-host marker assets, preserve attribution, and document data/privacy behavior.
+
+**Verification**
+
+Provider approval/plan and quotas are documented, rate limits are respected, attribution is visible, and map entry degrades gracefully during provider failure.
+
+### PROD-P1-010 — Complete dependency, legal, and operational review
+
+**Area:** Security / Legal / Operations  
+**Status:** ⚠️ Needs Verification  
+**Priority:** P1  
+**Risk:** High
+
+**Current situation**
+
+Production npm dependencies currently audit clean, but no backend CVE scanner or automated dependency policy is configured. The UI has help/privacy-control screens and placeholder-looking contact information, but no reviewed Terms, Privacy Policy, Refund Policy, Cookie position, or SMS/email consent record.
+
+**Evidence**
+
+- Frontend/backend dependency manifests
+- Frontend `Footer.jsx`, `PrivacyPage.jsx`, `HelpPage.jsx`
+- No CI dependency-scanning workflow
+
+**Problem**
+
+Known vulnerable libraries can go unnoticed, and launch may lack approved user disclosures and support procedures.
+
+**Required change**
+
+Add automated npm and Maven/OWASP dependency review with triage; establish update ownership; replace placeholder contact data; obtain legal/operations review for Terms, Privacy, cancellation/refund wording, consent, cookies, support, incidents, disputes, and data-retention procedures.
+
+**Verification**
+
+Dependency reports meet policy, exceptions have owners/expiry, approved legal pages are publicly reachable, consent evidence is retained, and support escalation is tested.
+
+# 🟡 P2 — POST-LAUNCH IMPROVEMENTS
+
+### PROD-P2-001 — Add evidence-driven caching
+
+**Area:** Performance  
+**Status:** ❌ Not Started  
+**Priority:** P2  
+**Risk:** Medium
+
+**Current situation**
+
+React Query provides short client caching, but backend/public catalog and homepage caching are not measured or defined.
+
+**Evidence**
+
+- Frontend `queryClient.js`
+- Backend public search/homepage services
+
+**Problem**
+
+Read-heavy traffic may create avoidable database load.
+
+**Required change**
+
+Measure hot queries, then add bounded application/HTTP caching with explicit invalidation. Do not introduce Redis until multi-instance measurements justify it.
+
+**Verification**
+
+Cache hit rate, invalidation correctness, and p95 latency improve without serving stale booking availability.
+
+### PROD-P2-002 — Expand observability and business telemetry
+
+**Area:** Operations / Product  
+**Status:** ❌ Not Started  
+**Priority:** P2  
+**Risk:** Medium
+
+**Current situation**
+
+There are application logs and admin audit records, but no trace correlation, SLOs, or funnel metrics.
+
+**Evidence**
+
+- Backend logging and `AdminAuditLog`
+- No metrics/tracing configuration
+
+**Problem**
+
+Root cause and product drop-off analysis will remain slow.
+
+**Required change**
+
+Add correlation IDs, structured events, safe tracing, SLO dashboards, and privacy-reviewed funnel metrics for search-to-book, payment, refund, and notification outcomes.
+
+**Verification**
+
+An operator can trace a booking reference through API, webhook, refund, and notification events without exposing personal or secret values.
+
+### PROD-P2-003 — Establish capacity and resilience baselines
+
+**Area:** Performance / QA  
+**Status:** ❌ Not Started  
+**Priority:** P2  
+**Risk:** Medium
+
+**Current situation**
+
+No repeatable load or soak tests define initial capacity.
+
+**Evidence**
+
+- Frontend `package.json`
+- Backend `pom.xml`
+- No k6, Gatling, JMeter, or equivalent load-test assets in either repository
+
+**Problem**
+
+Scaling thresholds and failure behavior are unknown.
+
+**Required change**
+
+Create safe staged tests for availability reads, simultaneous bookings, login/OTP, webhook bursts, database pool exhaustion, and provider latency; document initial concurrency and alert thresholds.
+
+**Verification**
+
+Capacity results are reproducible and include saturation, recovery, and zero-double-booking evidence.
+
+### PROD-P2-004 — Complete the PWA only if product requirements justify it
+
+**Area:** Frontend  
+**Status:** ❌ Not Started  
+**Priority:** P2  
+**Risk:** Low
+
+**Current situation**
+
+A manifest and PWA dependency exist, but the plugin is not registered.
+
+**Evidence**
+
+- Frontend `public/manifest.webmanifest`, `package.json`, `vite.config.js`
+
+**Problem**
+
+The project carries partial PWA expectations without defined offline behavior.
+
+**Required change**
+
+Decide whether installability is required. If enabled, never cache authenticated booking/payment responses as durable truth, add update UX, and test offline/upgrade behavior.
+
+**Verification**
+
+PWA audits pass and stale cached data cannot confirm availability or payment.
+
+### PROD-P2-005 — Improve media delivery and edge caching
+
+**Area:** Frontend / Infrastructure  
+**Status:** ❌ Not Started  
+**Priority:** P2  
+**Risk:** Low
+
+**Current situation**
+
+Images are delivered as original local/static files with no transformation pipeline.
+
+**Evidence**
+
+- Frontend `src/assets/brand`
+- Backend `FileStorageServiceImpl.java`, `WebConfig.java`
+
+**Problem**
+
+Bandwidth and image rendering will become inefficient as venue media grows.
+
+**Required change**
+
+Add derivative sizes, modern formats, immutable object keys, CDN caching, and safe deletion/versioning after persistent storage is established.
+
+**Verification**
+
+Device-appropriate images are served with high cache hit rates and no broken historical booking/venue references.
+
+### PROD-P2-006 — Extend end-to-end regression coverage
+
+**Area:** QA  
+**Status:** ❌ Not Started  
+**Priority:** P2  
+**Risk:** Medium
+
+**Current situation**
+
+Unit/component tests exist, but there is no browser E2E suite spanning all portals and external-service simulators.
+
+**Evidence**
+
+- Frontend `src/pages/auth/LoginPage.test.jsx`, `src/utils/otpAuth.test.js`
+- Backend `pom.xml`, `target/surefire-reports`
+- No Playwright/Cypress suite
+
+**Problem**
+
+Cross-system contract regressions require manual discovery.
+
+**Required change**
+
+Add deterministic E2E coverage for customer, owner/staff, admin, booking conflict, payment notify, cancellation/refund, and notification status using disposable infrastructure and provider simulators.
+
+**Verification**
+
+Critical E2E scenarios run in CI, publish artifacts on failure, and never use live payment/SMS credentials.
+
+### PROD-P2-007 — Refine non-blocking customer and operator UX
+
+**Area:** Frontend / Product
+**Status:** ❌ Not Started
+**Priority:** P2
+**Risk:** Low
+
+**Current situation**
+
+Core customer, owner, and administrator journeys exist, but lower-severity usability polish has not been prioritized from production telemetry or structured user research.
+
+**Evidence**
+
+- Frontend `src/App.jsx`, `src/pages/HomePage.jsx`, `src/pages/owner/OwnerCalendarPage.jsx`, `src/pages/admin/AdminDashboardPage.jsx`
+- No repository evidence of a production UX-feedback pipeline, experiment framework, or documented post-launch usability backlog
+
+**Problem**
+
+Minor friction, empty-state clarity, perceived latency, contextual help, and operator efficiency issues can accumulate after launch even when critical flows remain functional.
+
+**Required change**
+
+Use privacy-safe analytics, support themes, and usability studies to prioritize non-blocking improvements such as skeleton/empty states, saved preferences, clearer progress and recovery cues, contextual help, and reduced repetitive operator input. Keep booking, payment, accessibility, and security correctness ahead of cosmetic experiments.
+
+**Verification**
+
+Each change has a measured hypothesis, accessibility review, regression coverage, and post-release result; experiments do not alter authoritative prices, availability, payment, refund, or authorization decisions.
+
+# Frontend Production Checklist
+
+- [x] Production build succeeds locally
+- [x] Route-level lazy loading is present
+- [x] Central Axios client, timeout, JWT refresh queue, and role-specific refresh paths exist
+- [x] Customer, owner/staff, and admin route guards exist
+- [x] Production source maps are not emitted by the audited build
+- [ ] Production API URL is explicitly configured and HTTPS
+- [ ] Production build fails instead of falling back to localhost
+- [ ] Sandbox wording and behavior are removed from live UI
+- [ ] Full lint passes with zero errors
+- [ ] Frontend tests complete and pass within a bounded time
+- [ ] No browser-exposed backend secret exists
+- [ ] Status-specific error and network/offline states are verified
+- [ ] Payment return polls only authoritative backend state
+- [ ] 404 route exists
+- [ ] Canonical, OpenGraph, robots, and sitemap requirements are complete
+- [ ] Large bundles and images meet performance budgets
+- [ ] Accessibility checks pass
+- [ ] Mobile, tablet, and desktop layouts pass
+- [ ] Chrome, Edge, Safari, Android, and iPhone Safari pass
+
+# Backend Production Checklist
+
+- [ ] Production profile configured and fail-fast
+- [ ] Production secrets externalized and rotated
+- [ ] Hibernate production mode is `validate`
+- [ ] Runtime DDL and unsafe startup mutations removed
+- [ ] CORS restricted to approved origins
+- [x] Access tokens expire after 15 minutes
+- [x] Refresh-token records can be revoked on logout
+- [x] Route families enforce customer, owner/staff, and admin roles
+- [x] Customer booking ownership checks exist
+- [x] Owner business/venue/court ownership checks exist
+- [ ] Refresh tokens are hashed, rotated, and revoked after password reset
+- [ ] DTO validation and pagination limits are complete
+- [ ] Global exception responses are production-safe
+- [ ] SQL bind and sensitive logging are disabled
+- [ ] Distributed rate limits are active
+- [ ] Swagger is restricted in production
+- [ ] Explicit security-header policy is verified
+- [ ] PayHere production flow is verified
+- [ ] Refund recovery workflow is verified
+- [ ] SMSLenz production sender/account and failure behavior are verified
+- [ ] Safe health/readiness endpoints are enabled
+- [ ] Backend tests pass against an isolated disposable database
+
+# Payment Launch Checklist
+
+- [ ] PayHere live account approved
+- [ ] Live merchant ID configured as a secret-managed backend value
+- [ ] Live merchant secret configured and matched to the registered domain
+- [ ] Refund API app ID/app secret configured
+- [ ] `booknplay.lk` production domain registered with PayHere
+- [ ] Live checkout endpoint configured
+- [ ] HTTPS notify URL registered and publicly reachable
+- [ ] HTTPS return URL configured
+- [ ] HTTPS cancel URL configured
+- [x] Checkout hash generation has unit coverage
+- [x] Client redirect is not treated as payment proof
+- [ ] Webhook checks configured merchant ID
+- [ ] Webhook checks exact stored amount and currency
+- [ ] Webhook transaction/order reference is unique
+- [ ] Webhook processing is row-locked and idempotent
+- [ ] Duplicate/conflicting webhook test passes
+- [ ] Successful live payment test passes
+- [ ] Failed payment test passes
+- [ ] Cancelled payment test passes
+- [ ] Late webhook/expired hold test passes
+- [ ] Full refund test passes
+- [ ] Failed/unknown-outcome refund recovery test passes
+- [ ] Subscription payment webhook receives the same validation
+
+# Database Launch Checklist
+
+- [ ] Private production MySQL provisioned
+- [ ] Application uses a least-privilege non-root account
+- [ ] Database TLS enabled where available
+- [ ] Flyway baseline and migrations reviewed
+- [ ] `ddl-auto=validate` in production
+- [ ] Foreign keys verified against the real migrated schema
+- [ ] Booking/payment/refund/idempotency unique constraints verified
+- [ ] Slot-level active-booking uniqueness verified under concurrency
+- [ ] Query-driven indexes reviewed with EXPLAIN
+- [ ] Page sizes, date ranges, and batch jobs bounded
+- [ ] Hikari pool sized and monitored
+- [ ] Automated encrypted backups configured
+- [ ] Backup retention and off-site policy approved
+- [ ] Point-in-time recovery requirement decided
+- [ ] Restore into an isolated environment completed and timed
+- [ ] Production initialization creates no demo/test data
+
+# Security Checklist
+
+- [ ] Committed secrets removed from current tree and history
+- [ ] Exposed credentials rotated
+- [ ] Secret scanning blocks future commits
+- [x] Passwords and OTPs are BCrypt-hashed
+- [x] OTP expiry, cooldown, and attempt limits exist
+- [ ] OTP/login/password-reset IP and identity rate limits exist
+- [ ] JWT secret is strong, externalized, and rotated safely
+- [ ] Refresh tokens are hashed and rotated
+- [ ] Password reset revokes active sessions
+- [x] Backend role rules exist
+- [x] Customer and owner ownership checks exist in audited core services
+- [ ] Cross-role and cross-tenant integration tests pass
+- [ ] CORS denies unapproved origins
+- [ ] TLS and HSTS are active
+- [ ] CSP, Referrer-Policy, frame, and content-type headers are verified
+- [ ] Swagger/Actuator exposure is restricted
+- [ ] Error responses expose no stack trace, SQL, path, or class details
+- [ ] Logs contain no password, OTP, JWT, refresh token, auth header, secret, or SQL bind value
+- [ ] Upload content is decoded/validated and safely served
+- [ ] Frontend and backend dependency policies pass
+
+# Production Environment Variable Inventory
+
+Values must be supplied through the deployment secret/config system. This inventory intentionally contains names only.
+
+## Frontend variables
+
+| Variable | Secret | Required | Environments | Purpose |
+| --- | --- | --- | --- | --- |
+| `VITE_API_BASE_URL` | No | Yes | Development / Production | REST API base; production must be HTTPS and must not use localhost. |
+| `VITE_PAYMENT_GATEWAY` | No | Yes | Development / Production | Public gateway selector; production must be locked to the approved live gateway. |
+| `VITE_OWNER_SUBSCRIPTIONS` | No | Optional | Development / Production | Public feature flag for owner billing UI. |
+
+All `VITE_*` values are browser-visible. Never place merchant, JWT, database, SMS, or mail secrets in them.
+
+## Existing backend environment variables
+
+| Variable | Secret | Required | Environments | Purpose |
+| --- | --- | --- | --- | --- |
+| `BOOKNPLAY_ADMIN_EMAIL` | Sensitive | Bootstrap only | Controlled initialization | Initial super-admin identity. |
+| `BOOKNPLAY_ADMIN_PASSWORD` | Yes | Bootstrap only | Controlled initialization | Initial super-admin password; remove after bootstrap. |
+| `BOOKNPLAY_BOOKING_HOLD_EXPIRY_INTERVAL_MS` | No | Optional | Development / Production | Hold-expiry job interval. |
+| `BOOKNPLAY_BOOKING_HOLD_TTL_MINUTES` | No | Yes | Development / Production | Unpaid hold lifetime. |
+| `BOOKNPLAY_FRONTEND_URL` | No | Yes | Development / Production | Approved frontend URL. |
+| `BOOKNPLAY_PAYMENTS_MODE` | No | Yes | Development / Production | Payment mode; production must fail on dummy/sandbox mode. |
+| `BOOKNPLAY_SUBSCRIPTION_CANCEL_URL` | No | Yes when subscriptions enabled | Development / Production | Owner subscription cancel return. |
+| `BOOKNPLAY_SUBSCRIPTION_RETURN_URL` | No | Yes when subscriptions enabled | Development / Production | Owner subscription success return. |
+| `PAYHERE_APP_ID` | Yes | Yes for refunds | Sandbox / Production | PayHere refund API application ID. |
+| `PAYHERE_APP_SECRET` | Yes | Yes for refunds | Sandbox / Production | PayHere refund API application secret. |
+| `PAYHERE_CANCEL_URL` | No | Yes | Sandbox / Production | Customer checkout cancel URL. |
+| `PAYHERE_CHECKOUT_URL` | No | Yes | Sandbox / Production | PayHere checkout endpoint. |
+| `PAYHERE_MERCHANT_ID` | Sensitive | Yes | Sandbox / Production | Merchant identifier. |
+| `PAYHERE_MERCHANT_SECRET` | Yes | Yes | Sandbox / Production | Checkout/webhook signing secret. |
+| `PAYHERE_NOTIFY_URL` | No | Yes | Sandbox / Production | Public HTTPS webhook URL. |
+| `PAYHERE_OAUTH_TOKEN_URL` | No | Yes for refunds | Sandbox / Production | Refund OAuth endpoint. |
+| `PAYHERE_REFUND_URL` | No | Yes for refunds | Sandbox / Production | Refund endpoint. |
+| `PAYHERE_RETURN_URL` | No | Yes | Sandbox / Production | Customer checkout return URL. |
+| `SMSLENZ_API_KEY` | Yes | Yes for SMS | Development / Production | SMS provider API key. |
+| `SMSLENZ_SENDER_ID` | Sensitive | Yes for SMS | Development / Production | Approved production sender ID. |
+| `SMSLENZ_USER_ID` | Sensitive | Yes for SMS | Development / Production | SMS provider account identifier. |
+
+## Backend properties requiring external production overrides
+
+Spring Boot relaxed binding allows the following deployment names even though the current file uses literals. Mark them required in the production profile.
+
+| Variable | Secret | Required | Purpose |
+| --- | --- | --- | --- |
+| `SPRING_PROFILES_ACTIVE` | No | Yes | Must select `prod` in production. |
+| `SPRING_DATASOURCE_URL` | Sensitive | Yes | Private production MySQL JDBC URL with TLS. |
+| `SPRING_DATASOURCE_USERNAME` | Sensitive | Yes | Least-privilege application user. |
+| `SPRING_DATASOURCE_PASSWORD` | Yes | Yes | Database password. |
+| `JWT_SECRET` | Yes | Yes | Strong Base64 signing key. |
+| `SPRING_MAIL_USERNAME` | Sensitive | Optional if email disabled | SMTP identity. |
+| `SPRING_MAIL_PASSWORD` | Yes | Optional if email disabled | SMTP credential. |
+| `APP_BASE_URL` | No | Yes | Public HTTPS backend origin. |
+| `APP_UPLOAD_DIR` | No | Yes if filesystem storage retained | Persistent storage mount; object storage is preferred. |
+| `SERVER_PORT` | No | Optional | Internal service port. |
+
+# Production URL Audit
+
+- Frontend production risk: API/media fallbacks use `http://localhost:8080`; must fail closed for production.
+- Frontend development-only references: README, tests, and `.env.example` may retain clearly labeled localhost values.
+- Frontend production risk: customer checkout/help/return copy explicitly says PayHere sandbox.
+- Backend production risk: application defaults contain localhost frontend/API URLs and PayHere sandbox checkout/refund/OAuth endpoints.
+- Backend development-only references: sandbox example and tests may retain clearly labeled localhost/sandbox values.
+- No active ngrok URL was found in application defaults, but comments/examples describe ngrok for development.
+- No `vercel.app` dependency was found.
+- All live origins must be HTTPS; do not permit production HTTP API/media calls.
+
+# Recommended Production Architecture
+
+```text
+Users and PayHere
+        |
+      HTTPS
+        |
+CDN / WAF / reverse proxy
+  |                     |
+  |                     +--> api.booknplay.lk
+  |                              |
+  +--> booknplay.lk              v
+       static frontend      Spring Boot modular monolith
+                                   |
+                  +----------------+----------------+
+                  |                |                |
+            Private MySQL   Persistent object   Monitoring/logs
+                               storage
+                                   |
+                  +----------------+----------------+
+                  |                |                |
+               PayHere         SMSLenz          SMTP email
+```
+
+Keep BooknPlay as a modular monolith. Use one production API deployment initially unless measured availability/capacity requires multiple instances. If multiple instances are used, all checkout/idempotency/job state must be durable and scheduled jobs must be coordinated.
+
+# Backup, Recovery, and Monitoring
+
+## Backup and recovery tasks
+
+- [ ] Automated MySQL backups scheduled
+- [ ] Backup encryption and access controls configured
+- [ ] Retention policy approved
+- [ ] Off-site/independent copy configured
+- [ ] Point-in-time recovery requirement and binlog retention decided
+- [ ] Media storage backup/versioning configured
+- [ ] Restore runbook names owners and credentials process
+- [ ] Full restore into an isolated environment completed
+- [ ] Recovery point objective and recovery time objective measured
+
+## Monitoring and alerting tasks
+
+- [ ] Frontend and API uptime
+- [ ] Health/readiness endpoint without sensitive detail
+- [ ] API p50/p95/p99 latency and HTTP 5xx rate
+- [ ] Database availability, storage, slow queries, and connection pool
+- [ ] CPU, memory, disk, and process restarts
+- [ ] Booking conflict and hold-expiry rates
+- [ ] PayHere webhook failures, invalid signatures, and reconciliation backlog
+- [ ] Refund failure/reconciliation backlog
+- [ ] SMS/email failures and provider latency
+- [ ] Authentication failures and rate-limit events
+- [ ] Backup failures and last successful restore drill
+
+# CI/CD Checklist
+
+- [ ] Pull requests install from lockfiles on pinned Java and Node versions
+- [ ] Frontend lint, tests, build, and production dependency audit pass
+- [ ] Backend unit/integration tests run only against disposable databases
+- [ ] Backend dependency/CVE scan passes policy
+- [ ] Secret scanning runs on commits and history-sensitive changes
+- [ ] Flyway migrations apply to a clean and previous-version database
+- [ ] Immutable frontend/backend artifacts are built once
+- [ ] Deployment requires protected-environment approval
+- [ ] Production secrets are injected by the platform
+- [ ] Post-deploy smoke tests and automatic alert checks run
+- [ ] Failed deployment stops rollout and preserves the previous artifact
+
+# Deployment Checklist
+
+## Pre-deployment
+
+- [ ] All P0 tasks completed and independently reviewed
+- [ ] Clean-clone CI is green
+- [ ] Live configuration inventory is complete without values in source control
+- [ ] Database migration and backup are reviewed
+- [ ] Restore drill is current
+- [ ] DNS, TLS, CORS, headers, and PayHere domain registration verified
+- [ ] Monitoring, on-call contacts, support, and status communication ready
+- [ ] Launch window and rollback owner confirmed
+
+## Deployment
+
+- [ ] Capture current application versions and database migration version
+- [ ] Create/verify pre-deployment backup
+- [ ] Apply forward-compatible migrations once
+- [ ] Deploy backend immutable artifact with prod profile
+- [ ] Verify readiness before routing traffic
+- [ ] Deploy frontend immutable artifact with production API URL
+- [ ] Purge only required CDN assets
+- [ ] Confirm scheduled jobs run on the intended instance(s)
+
+## Smoke Tests
+
+- [ ] Execute the full production smoke test below
+- [ ] Verify logs/metrics contain correlation references but no secrets/PII leakage
+- [ ] Confirm no localhost, ngrok, sandbox, mixed-content, or CORS errors
+- [ ] Confirm payment, refund, notification, owner, and admin dashboards agree
+
+## Post-deployment
+
+- [ ] Monitor 5xx, latency, DB connections, webhooks, refunds, and notifications
+- [ ] Reconcile the approved live payment/refund tests
+- [ ] Confirm backups continue after schema change
+- [ ] Record deployed commits/artifacts, migration version, checks, and approvers
+- [ ] Remove temporary bootstrap credentials and test records safely
+
+## Rollback
+
+- [ ] Stop rollout and new traffic to the failing version
+- [ ] Preserve logs, metrics, webhook payload references, and migration state
+- [ ] Restore the previous application artifact
+- [ ] Do not blindly roll back database migrations
+- [ ] Check backward compatibility before routing the previous application
+- [ ] Prefer a reviewed forward-fix for migrated data/schema
+- [ ] Restore a database backup only for confirmed data corruption with explicit approval
+- [ ] Re-run smoke tests and reconcile payments/webhooks received during the incident
+
+# Production Smoke Test
+
+Use dedicated approved production test identities and a low-value real/live payment only after PayHere authorizes it.
+
+1. Open `https://booknplay.lk` on desktop and mobile.
+2. Confirm TLS, security headers, canonical URL, and no mixed content.
+3. Register a new customer by phone.
+4. Verify OTP delivery and ensure OTP never appears in logs.
+5. Log in and refresh the page to verify session behavior.
+6. Search for a production-approved venue.
+7. Open the venue and verify map/address/media fallback.
+8. Select a sport and court.
+9. Select a future date and available discrete slot(s).
+10. Open checkout and verify server-authoritative total and cancellation wording.
+11. Create the booking and confirm a `PENDING` hold appears once.
+12. Attempt the same slot concurrently from a second account and confirm rejection.
+13. Complete the approved live PayHere payment.
+14. Confirm the browser return page waits for backend state.
+15. Confirm one signed webhook is stored/processed.
+16. Replay the same webhook and confirm no duplicate state, invoice, or notification.
+17. Confirm booking is `CONFIRMED` and payment is `SUCCESS` with the exact amount/currency.
+18. Confirm the customer booking detail and invoice are accessible only to that customer.
+19. Verify booking confirmation SMS and email if enabled.
+20. Verify the owner calendar shows the booking for the correct business/court.
+21. Create a non-overlapping walk-in booking and verify expected SMS/cash behavior.
+22. Verify staff cannot open owner-only earnings, billing, team, or profile operations through direct API calls.
+23. Verify another business cannot read or mutate the venue/court/booking.
+24. Verify admin visibility and an audited admin mutation with a reason.
+25. Test an eligible cancellation and confirm the displayed policy matches the persisted snapshot.
+26. Confirm one refund record, provider reference, payment state, and booking state.
+27. Retry cancellation and confirm no duplicate refund.
+28. Test a declined/cancelled payment and confirm the hold expires safely.
+29. Verify hostile-origin CORS, invalid JWT, oversized upload, and rate-limit responses.
+30. Confirm dashboards, alerts, logs, backup status, and support escalation are operational.
+
+# Rollback Plan
+
+```text
+New version fails
+        |
+        v
+Stop rollout and preserve evidence
+        |
+        v
+Remove failing instances from traffic
+        |
+        v
+Check current Flyway version and backward compatibility
+        |
+        +--> Compatible: restore previous immutable application artifact
+        |
+        +--> Not compatible: keep traffic stopped and apply reviewed forward-fix
+        |
+        v
+Restore database backup only for confirmed corruption and explicit approval
+        |
+        v
+Reconcile payments/webhooks/refunds received during the incident
+        |
+        v
+Run smoke tests, restore traffic gradually, and monitor
+```
+
+Do not use destructive Git/database commands as a rollback mechanism. Maintain at least the previous known-good frontend and backend artifacts and document migration compatibility in every release.
+
+# Legal and Operational Launch Review
+
+- [ ] Privacy Policy reviewed for customer, owner, analytics, location, and provider data
+- [ ] Terms & Conditions reviewed
+- [ ] Cancellation and Refund Policy matches implemented server behavior
+- [ ] SMS/email consent and opt-out requirements reviewed
+- [ ] Cookie/local-storage position reviewed
+- [ ] PayHere wording and merchant/support details approved
+- [ ] Real support email, phone, hours, escalation, and dispute procedure published
+- [ ] Data retention/deletion and account requests documented
+- [ ] Incident response and breach-notification responsibilities assigned
+- [ ] Demo users, test businesses, test venues, sandbox payments, and bootstrap credentials excluded from production
+
+# Historical Development Roadmap
+
+> The material below is preserved from the pre-audit development roadmap. Statements about passing tests, dummy/sandbox payments, permission enforcement, and release readiness reflect earlier snapshots and are superseded by the production audit above. Preserve it as implementation history, not current launch evidence.
 
 Last updated: 2026-10-03
 
@@ -944,3 +2226,53 @@ The product is production-ready when:
 - authorization is enforced by the backend for every venue, court, and booking id;
 - payment success follows server verification, including failed and duplicate callbacks;
 - monitoring, backups, rollback, and support steps exist for the API and the frontend.
+
+---
+
+## Production Audit Totals
+
+- P0 launch blockers: **12**
+- P1 pre-launch reliability and quality issues: **10**
+- P2 post-launch improvements: **7**
+- Readiness: **28%**
+
+# Production GO / NO-GO Checklist
+
+Production launch is permitted only when every item below is checked and the evidence is attached to the release record.
+
+- [ ] All P0 issues are completed, independently reviewed, and verified in the production-like environment.
+- [ ] The frontend production build, lint gate, and bounded test suite all pass in CI.
+- [ ] All backend tests pass against an isolated test database without touching development or production data.
+- [ ] The production database uses reviewed Flyway migrations; startup schema mutation and data overwrite jobs are disabled.
+- [ ] A production backup has completed and a restore drill has passed with recorded RPO and RTO results.
+- [ ] The frontend, API, callbacks, and media paths use valid HTTPS endpoints and trusted certificates.
+- [ ] Required environment variables are supplied by the approved secret manager and fail-fast validation passes.
+- [ ] No production bundle or runtime configuration contains localhost, loopback, private-development, ngrok, or sandbox fallbacks.
+- [ ] Authentication, password reset, session revocation, token rotation, and logout behavior pass the security test plan.
+- [ ] Customer, owner, and administrator authorization checks pass for every object identifier and role boundary.
+- [ ] Concurrent booking and late-webhook tests prove that a discrete court slot cannot be confirmed twice.
+- [ ] PayHere live merchant payment, return, cancel, notify, signature, amount, currency, duplicate, and replay scenarios pass.
+- [ ] Cancellation wording and backend enforcement match, and refund retries, failures, reconciliation, and operator visibility pass.
+- [ ] SMSLenz OTP and notification delivery, throttling, retry, failure, and support flows pass with production credentials.
+- [ ] Health checks, alerting, dashboards, structured logs, audit events, and on-call ownership are active.
+- [ ] The deployment rollback rehearsal succeeds for frontend, API, database migrations, and configuration.
+- [ ] Launch-day smoke tests pass on approved desktop and mobile browsers and are signed off by product, engineering, security, and operations.
+
+## Launch Decision
+
+**Status: 🔴 NO-GO**
+
+The actual remaining launch blockers are:
+
+1. Committed database, JWT, and mail credentials have not been rotated and purged; the tracked debug log also remains in scope for removal.
+2. Production profiles, externalized configuration, fail-fast validation, and safe production origins/endpoints are not established.
+3. Database evolution and startup mutation remain unsafe, and backend tests are neither isolated nor passing.
+4. PayHere is not live-ready: merchant and URL configuration needs verification, callback validation is incomplete, and sandbox behavior remains.
+5. Booking confirmation does not share the court-locking boundary, and migration-backed discrete-slot integrity protection is absent.
+6. Cancellation semantics conflict across frontend and backend, while refunds lack durable states, idempotent recovery, and reconciliation.
+7. Distributed rate limits and several production security controls are missing; CORS accepts hostile credentialed origins.
+8. Frontend lint and bounded tests do not pass; backend reports 116 tests with 3 failures and 5 errors.
+9. HTTPS hosting, private managed MySQL, persistent media storage, monitoring, verified backups, CI/CD, and rehearsed rollback are not ready.
+10. Live PayHere, SMSLenz, DNS, real-device/browser, and production operational checks remain **⚠️ NEEDS VERIFICATION**.
+
+**Final production decision: 🔴 NO-GO until every P0 item and every checklist gate above is verified.**

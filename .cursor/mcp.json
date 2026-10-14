@@ -13,6 +13,9 @@
         "-y",
         "flowbite-mcp"
       ]
+    },
+    "gamma": {
+      "url": "https://mcp.gamma.app/mcp"
     }
   }
 }

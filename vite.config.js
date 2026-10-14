@@ -3,9 +3,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [react()],
-  esbuild: {
-    jsx: 'automatic',
-  },
+
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',

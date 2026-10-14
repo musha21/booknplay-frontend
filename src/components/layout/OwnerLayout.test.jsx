@@ -1,3 +1,4 @@
+import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -67,10 +68,10 @@ describe('OwnerLayout responsive shell', () => {
     const navigation = await screen.findByRole('navigation', { name: 'Owner navigation' });
     expect(navigation).toBeVisible();
     expect(screen.getByLabelText('Select venue')).toHaveTextContent('Indoor Cricket');
-    expect(within(navigation).getByText('Bookable spaces')).toBeInTheDocument();
-    expect(within(navigation).queryByText('Courts')).not.toBeInTheDocument();
+    expect(within(navigation).getByText('Courts')).toBeInTheDocument();
+    expect(within(navigation).getByText('Dashboard')).toBeInTheDocument();
     expect(within(navigation).getByText('Venues')).toBeInTheDocument();
-    expect(within(navigation).getByText('Team')).toBeInTheDocument();
+    expect(within(navigation).getByText('Staff')).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Close owner navigation'));
     await waitFor(() => expect(navigation).not.toBeVisible());
@@ -107,10 +108,10 @@ describe('OwnerLayout responsive shell', () => {
 
     expect(localStorage.getItem(OWNER_SIDEBAR_COLLAPSED_KEY)).toBe('1');
     expect(screen.getByLabelText('Expand owner navigation')).toBeInTheDocument();
-    expect(screen.queryByText('Bookable spaces')).not.toBeInTheDocument();
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Expand owner navigation'));
     expect(localStorage.getItem(OWNER_SIDEBAR_COLLAPSED_KEY)).toBe('0');
-    expect(screen.getByText('Bookable spaces')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
   });
 });

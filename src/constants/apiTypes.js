@@ -186,6 +186,13 @@ export const SubscriptionAccessReason = /** @type {const} */ ({
  */
 
 /**
+ * @typedef {Object} BookingSlotResponse
+ * @property {string} startTime - "HH:mm:ss"
+ * @property {string} endTime   - "HH:mm:ss"
+ * @property {number} [price]
+ */
+
+/**
  * @typedef {Object} BookingResponse
  * @property {string}        id
  * @property {string}        bookingRef
@@ -200,6 +207,7 @@ export const SubscriptionAccessReason = /** @type {const} */ ({
  * @property {string}        date        - "YYYY-MM-DD"
  * @property {string}        startTime   - "HH:mm:ss"
  * @property {string}        endTime     - "HH:mm:ss"
+ * @property {BookingSlotResponse[]} [slots] - discrete hours (gaps allowed)
  * @property {number}        totalAmount
  * @property {string}        currency
  * @property {BookingStatus} status
@@ -300,12 +308,41 @@ export const SubscriptionAccessReason = /** @type {const} */ ({
  * @property {string} email
  * @property {string} phone
  * @property {string} password
+ * @property {string} verificationToken
  */
 
 /**
  * @typedef {Object} CustomerLoginRequest
- * @property {string} email
+ * @property {string} [email]
+ * @property {string} [phone]
  * @property {string} password
+ */
+
+/**
+ * @typedef {Object} OtpRequestDto
+ * @property {string} phone
+ */
+
+/**
+ * @typedef {Object} OtpVerifyRequest
+ * @property {string} phone
+ * @property {string} otp
+ */
+
+/**
+ * @typedef {Object} PhoneRegisterRequest
+ * @property {string} verificationToken
+ * @property {string} firstName
+ * @property {string} lastName
+ * @property {string} email
+ */
+
+/**
+ * New-user branch of POST /auth/otp/verify (existing users get AuthResponse instead).
+ * @typedef {Object} OtpVerifyResponse
+ * @property {boolean} [verified]
+ * @property {boolean} [registrationRequired]
+ * @property {string} [verificationToken]
  */
 
 /**

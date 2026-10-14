@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useBookingQuote, useCreateBooking, useInitiatePayment } from '../hooks/useBookings';
@@ -6,6 +6,7 @@ import { PAYMENT_GATEWAY } from '../utils/paymentGateway';
 import { formatCurrency, formatTime, formatDate } from '../utils/formatters';
 import { bookingIdempotencyKey, bookingRequestFromIntent, clearBookingIntent, readBookingIntent } from '../utils/bookingIntent';
 import { PAYMENT_HOLD_NOTICE } from '../utils/paymentStatus';
+import SlingButton from '../components/ui/SlingButton';
 import {
   TextField,
   Button,
@@ -52,6 +53,7 @@ export default function CheckoutPage() {
   });
 
   const [error, setError] = useState(null);
+  const [pulling, setPulling] = useState(false);
 
   if (!checkoutState || !checkoutState.slots || checkoutState.slots.length === 0) {
     return (
@@ -76,7 +78,7 @@ export default function CheckoutPage() {
   };
 
   const handleConfirmAndPay = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setError(null);
 
     if (!quote) {
@@ -319,30 +321,34 @@ export default function CheckoutPage() {
                 {PAYMENT_HOLD_NOTICE} You will complete payment on PayHere sandbox. The booking confirms after PayHere notifies the server.
               </Alert>
 
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleConfirmAndPay}
-                disabled={busy || !bookingRequest.ok || !quote?.quoteId || quoteQuery.isFetching}
-                sx={{
-                  backgroundColor: '#84cc16',
-                  color: '#061032',
-                  fontWeight: '800',
-                  py: 1.8,
-                  borderRadius: '16px',
-                  fontSize: '1rem',
-                  textTransform: 'none',
-                  '&:hover': {
-                    backgroundColor: '#65a30d',
-                  },
-                }}
-              >
-                {busy ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  'Continue to payment'
-                )}
-              </Button>
+              <div className="flex w-full items-center justify-end gap-3">
+                <div className="flex flex-col items-end">
+                  <span
+                    className={`text-base font-extrabold ${pulling ? 'text-lime-600' : 'text-ink'}`}
+                  >
+                    {busy ? 'Processing…' : pulling ? 'Ready to play' : 'Continue to payment'}
+                  </span>
+                  {busy ? (
+                    <CircularProgress size={14} className="mt-1" />
+                  ) : (
+                    <span className="text-[11px] font-medium text-slate-500">Hold & pull</span>
+                  )}
+                </div>
+                <SlingButton
+                  onSend={() => handleConfirmAndPay()}
+                  onPullStateChange={({ held }) => setPulling(held)}
+                  padColor="#84cc16"
+                  iconColor="#061032"
+                  accentColor="#bef264"
+                  wellColor="#0b1220"
+                  bandColor="#334155"
+                  size={56}
+                  axis="horizontal"
+                  tapSends
+                  disabled={busy || !bookingRequest.ok || !quote?.quoteId || quoteQuery.isFetching}
+                  ariaLabel={pulling ? 'Ready to play' : 'Continue to payment'}
+                />
+              </div>
 
               <div className="flex items-center justify-center gap-1.5 text-center text-xs text-muted">
                 <Lock sx={{ fontSize: 14 }} /> 256-Bit SSL Encrypted & Secure

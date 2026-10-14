@@ -31,3 +31,35 @@ export const uploadPremiumSlideImage = (file) => {
     headers: { 'Content-Type': undefined },
   }));
 };
+
+export const getAdminPayoutBusinesses = () => data(apiClient.get('/admin/payouts/businesses'));
+export const getAdminPayouts = (params) => data(apiClient.get('/admin/payouts', { params }));
+export const getAdminPayout = (id) => data(apiClient.get(`/admin/payouts/${id}`));
+export const updateAdminPayoutStatus = (id, payload) => data(apiClient.patch(`/admin/payouts/${id}/status`, payload));
+export const settleAdminPayout = (id, { transferReference, transferDate, transferAmount, note, overrideReason, receipt }) => {
+  if (receipt) {
+    const form = new FormData();
+    form.append('transferReference', transferReference);
+    form.append('transferDate', transferDate);
+    form.append('transferAmount', String(transferAmount));
+    if (note) form.append('note', note);
+    if (overrideReason) form.append('overrideReason', overrideReason);
+    form.append('receipt', receipt);
+    return data(apiClient.post(`/admin/payouts/${id}/settle`, form, {
+      headers: { 'Content-Type': undefined },
+    }));
+  }
+  return data(apiClient.post(`/admin/payouts/${id}/settle`, {
+    transferReference,
+    transferDate,
+    transferAmount,
+    note,
+    overrideReason,
+  }));
+};
+export const generateAdminPayouts = (asOf) => data(apiClient.post('/admin/payouts/generate', null, {
+  params: asOf ? { asOf } : undefined,
+}));
+export const setBusinessBankVerification = (id, payload) => data(apiClient.patch(`/admin/businesses/${id}/bank-verification`, payload));
+export const getAdminPayoutConfig = () => data(apiClient.get('/admin/payout-config'));
+export const updateAdminPayoutConfig = (payload) => data(apiClient.patch('/admin/payout-config', payload));

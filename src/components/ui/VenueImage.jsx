@@ -1,7 +1,7 @@
 import { mediaUrl } from '../../utils/mediaUrl';
 import SportIcon from './SportIcon';
 
-export default function VenueImage({ src, alt, className = '', iconClassName = '', sportName = '', eager = false }) {
+export default function VenueImage({ src, alt, className = '', iconClassName = '', sportName = '', eager = false, fetchPriority }) {
   const image = mediaUrl(src);
   if (image) {
     return (
@@ -11,6 +11,7 @@ export default function VenueImage({ src, alt, className = '', iconClassName = '
         className={className}
         loading={eager ? 'eager' : 'lazy'}
         decoding="async"
+        fetchPriority={fetchPriority || (eager ? 'high' : 'auto')}
       />
     );
   }

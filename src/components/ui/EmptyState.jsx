@@ -1,3 +1,4 @@
+import React from 'react';
 import { Button } from '@mui/material';
 
 export default function EmptyState({ icon: Icon, title, description, actionLabel, onAction }) {

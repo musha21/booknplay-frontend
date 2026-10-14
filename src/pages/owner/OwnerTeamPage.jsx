@@ -4,7 +4,7 @@ import {
 } from '@mui/material';
 import { toast } from 'sonner';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { inviteOwnerStaff, listOwnerStaff, updateOwnerStaff } from '../../api/ownerStaff';
+import { deleteOwnerStaff, inviteOwnerStaff, listOwnerStaff, updateOwnerStaff } from '../../api/ownerStaff';
 import { OwnerPage, OwnerPageHeader, OwnerSection } from '../../components/owner/OwnerDashboardUi';
 import { useOwnerSubscription } from '../../hooks/useOwner';
 import {
@@ -70,6 +70,15 @@ export default function OwnerTeamPage() {
       queryClient.invalidateQueries({ queryKey: ['owner', 'staff'] });
     },
     onError: (error) => toast.error(planLimitMessage(error, 'Could not update staff')),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteOwnerStaff,
+    onSuccess: () => {
+      toast.success('Staff removed');
+      queryClient.invalidateQueries({ queryKey: ['owner', 'staff'] });
+    },
+    onError: (error) => toast.error(planLimitMessage(error, 'Could not remove staff')),
   });
 
   return (
@@ -143,18 +152,32 @@ export default function OwnerTeamPage() {
                     <p className="font-extrabold text-ink">{member.name}</p>
                     <p className="text-sm text-muted">{member.email}</p>
                   </div>
-                  <FormControlLabel
-                    control={(
-                      <Switch
-                        checked={member.active}
-                        onChange={(e) => updateMutation.mutate({
-                          id: member.id,
-                          payload: { active: e.target.checked },
-                        })}
-                      />
-                    )}
-                    label={<span className="text-sm font-bold">{member.active ? 'Active' : 'Inactive'}</span>}
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <FormControlLabel
+                      control={(
+                        <Switch
+                          checked={member.active}
+                          onChange={(e) => updateMutation.mutate({
+                            id: member.id,
+                            payload: { active: e.target.checked },
+                          })}
+                        />
+                      )}
+                      label={<span className="text-sm font-bold">{member.active ? 'Active' : 'Inactive'}</span>}
+                    />
+                    <Button
+                      size="small"
+                      color="error"
+                      disabled={deleteMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm(`Remove ${member.name} from the team?`)) {
+                          deleteMutation.mutate(member.id);
+                        }
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
                   {PERMISSIONS.map(([key, label]) => (

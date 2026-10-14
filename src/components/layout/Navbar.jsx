@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Button, Divider, Drawer, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from '@mui/material';
-import { ArrowOutward, Close, EventNote, Login, Logout, Menu as MenuIcon, Person, PersonAdd } from '@mui/icons-material';
+import { ArrowOutward, Close, EventNote, Favorite, Login, Logout, Menu as MenuIcon, Person, PersonAdd } from '@mui/icons-material';
 import { revokeAndClearSession } from '../../lib/signOut';
 import useAuthStore from '../../stores/authStore';
 import BrandLogo from '../ui/BrandLogo';
@@ -35,6 +35,7 @@ export default function Navbar() {
             <Link to="/#venues" onClick={() => setMobileOpen(false)}>Explore venues</Link>
             <a href="#sports" onClick={() => setMobileOpen(false)}>Sports</a>
             <a href="#how-it-works" onClick={() => setMobileOpen(false)}>How it works</a>
+            {isAuthenticated && <Link to="/account/favourites" className="hp-nav-extra" onClick={() => setMobileOpen(false)}>Favourites</Link>}
             {isAuthenticated && <Link to="/account/bookings" className="hp-nav-extra" onClick={() => setMobileOpen(false)}>My bookings</Link>}
             {isAuthenticated && <button type="button" className="hp-nav-extra" onClick={handleLogout}>Sign out</button>}
           </nav>
@@ -49,6 +50,7 @@ export default function Navbar() {
                 </button>
                 <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
                   <MenuItem onClick={() => { closeAll(); navigate('/account/profile'); }}><ListItemIcon><Person fontSize="small" /></ListItemIcon><ListItemText>My profile</ListItemText></MenuItem>
+                  <MenuItem onClick={() => { closeAll(); navigate('/account/favourites'); }}><ListItemIcon><Favorite fontSize="small" /></ListItemIcon><ListItemText>Favourites</ListItemText></MenuItem>
                   <MenuItem onClick={() => { closeAll(); navigate('/account/bookings'); }}><ListItemIcon><EventNote fontSize="small" /></ListItemIcon><ListItemText>My bookings</ListItemText></MenuItem>
                   <Divider />
                   <MenuItem onClick={handleLogout} className="!text-red-500"><ListItemIcon><Logout className="!text-red-500" fontSize="small" /></ListItemIcon><ListItemText>Sign out</ListItemText></MenuItem>
@@ -76,6 +78,7 @@ export default function Navbar() {
                 </button>
                 <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
                   <MenuItem onClick={() => { closeAll(); navigate('/account/profile'); }}><ListItemIcon><Person fontSize="small" /></ListItemIcon><ListItemText>My profile</ListItemText></MenuItem>
+                  <MenuItem onClick={() => { closeAll(); navigate('/account/favourites'); }}><ListItemIcon><Favorite fontSize="small" /></ListItemIcon><ListItemText>Favourites</ListItemText></MenuItem>
                   <MenuItem onClick={() => { closeAll(); navigate('/account/bookings'); }}><ListItemIcon><EventNote fontSize="small" /></ListItemIcon><ListItemText>My bookings</ListItemText></MenuItem>
                   <Divider />
                   <MenuItem onClick={handleLogout} className="!text-red-500"><ListItemIcon><Logout className="!text-red-500" fontSize="small" /></ListItemIcon><ListItemText>Sign out</ListItemText></MenuItem>

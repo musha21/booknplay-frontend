@@ -1,3 +1,4 @@
+import React from 'react';
 import { Link } from 'react-router-dom';
 import logoMarkDaylight from '../../assets/brand/logo-mark-daylight.png';
 import logoMarkBrand from '../../assets/brand/logo-mark.png';

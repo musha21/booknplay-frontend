@@ -32,6 +32,7 @@ export default function VenueCarousel({
   imageClassName = 'h-44 w-full object-cover',
   showLogo = true,
   alt,
+  autoplayOffsetMs = 0,
 }) {
   const reduced = useReducedMotion();
   const images = venueMediaList(venue);
@@ -39,12 +40,15 @@ export default function VenueCarousel({
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [paused, setPaused] = useState(false);
+  const [inView, setInView] = useState(true);
+  const rootRef = useRef(null);
+  const resumeTimerRef = useRef(null);
   const touchStart = useRef(null);
   const labelId = useId();
   const count = images.length;
   const safeIndex = count ? ((index % count) + count) % count : 0;
   const current = count ? images[safeIndex] : '';
-  const autoplay = count > 1 && !reduced && !paused;
+  const autoplay = count > 1 && !reduced && !paused && inView;
 
   const go = useCallback((next) => {
     if (count <= 1) return;
@@ -61,52 +65,76 @@ export default function VenueCarousel({
   const previous = () => step(-1);
   const next = () => step(1);
 
+  const pauseTemporarily = useCallback(() => {
+    setPaused(true);
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    resumeTimerRef.current = setTimeout(() => setPaused(false), AUTOPLAY_MS);
+  }, []);
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { threshold: 0.15 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!autoplay) return undefined;
-    const timer = setInterval(() => step(1), AUTOPLAY_MS);
-    return () => clearInterval(timer);
-  }, [autoplay, step, index]);
+    let intervalId;
+    const delay = Math.max(0, autoplayOffsetMs);
+    const startId = setTimeout(() => {
+      intervalId = setInterval(() => step(1), AUTOPLAY_MS);
+    }, delay);
+    return () => {
+      clearTimeout(startId);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [autoplay, step, autoplayOffsetMs]);
 
   const onKeyDown = (event) => {
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
+      pauseTemporarily();
       previous();
     }
     if (event.key === 'ArrowRight') {
       event.preventDefault();
+      pauseTemporarily();
       next();
     }
   };
 
-  const pause = () => setPaused(true);
-  const resume = () => setPaused(false);
-
   return (
     <div
+      ref={rootRef}
       className={`relative h-full w-full overflow-hidden bg-navy-900/5 ${className}`}
       role="region"
       aria-roledescription="carousel"
       aria-labelledby={labelId}
       tabIndex={count > 1 ? 0 : undefined}
       onKeyDown={onKeyDown}
-      onMouseEnter={pause}
-      onMouseLeave={resume}
-      onFocus={pause}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) resume();
-      }}
       onTouchStart={(event) => {
-        pause();
         touchStart.current = event.changedTouches[0]?.clientX ?? null;
       }}
       onTouchEnd={(event) => {
-        resume();
         if (touchStart.current == null || count <= 1) return;
         const delta = (event.changedTouches[0]?.clientX ?? touchStart.current) - touchStart.current;
+        touchStart.current = null;
         if (Math.abs(delta) < 40) return;
+        pauseTemporarily();
         if (delta > 0) previous();
         else next();
-        touchStart.current = null;
       }}
     >
       <span id={labelId} className="sr-only">{alt || venue?.name || 'Venue photos'}</span>
@@ -142,6 +170,7 @@ export default function VenueCarousel({
             aria-label="Previous photo"
             onClick={(event) => {
               event.stopPropagation();
+              pauseTemporarily();
               previous();
             }}
             className="absolute left-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-navy-900/55 text-white backdrop-blur transition hover:bg-navy-900/75"
@@ -153,6 +182,7 @@ export default function VenueCarousel({
             aria-label="Next photo"
             onClick={(event) => {
               event.stopPropagation();
+              pauseTemporarily();
               next();
             }}
             className="absolute right-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-navy-900/55 text-white backdrop-blur transition hover:bg-navy-900/75"
@@ -168,6 +198,7 @@ export default function VenueCarousel({
                 aria-current={dotIndex === safeIndex}
                 onClick={(event) => {
                   event.stopPropagation();
+                  pauseTemporarily();
                   go(dotIndex);
                 }}
                 className={`h-2.5 w-2.5 rounded-full transition ${
