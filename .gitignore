@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Env secrets (keep .env.example tracked)
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,6 +27,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+*.stackdump
 
 # Graphify (generated knowledge graph)
 graphify-out/
@@ -32,3 +38,4 @@ output/
 
 # Test coverage (if generated later)
 coverage/
+
