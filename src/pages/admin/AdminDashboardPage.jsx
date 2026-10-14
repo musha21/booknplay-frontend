@@ -1,6 +1,6 @@
-import Chart from 'react-apexcharts';
 import { Business, EventNote, Payments, People, Stadium, CardMembership, Timelapse, WarningAmber } from '@mui/icons-material';
 import { Skeleton } from '@mui/material';
+import LazyApexChart from '../../components/charts/LazyApexChart';
 import { useAdminDashboard } from '../../hooks/useAdmin';
 import { formatCurrency } from '../../utils/formatters';
 import { planDisplayName } from '../../utils/subscription';
@@ -84,7 +84,7 @@ export default function AdminDashboardPage() {
               <p className="mt-8 text-sm text-muted">No subscription rows yet.</p>
             ) : (
               <div className="mt-2">
-                <Chart
+                <LazyApexChart
                   type="donut"
                   height={300}
                   series={pieSeries}
@@ -116,7 +116,7 @@ export default function AdminDashboardPage() {
               <Skeleton className="!mt-4" variant="rounded" height={280} />
             ) : (
               <div className="mt-2">
-                <Chart
+                <LazyApexChart
                   type="bar"
                   height={300}
                   series={barSeries}

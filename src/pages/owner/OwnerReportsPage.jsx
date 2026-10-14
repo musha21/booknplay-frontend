@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, NavLink, useLocation } from 'react-router-dom';
-import Chart from 'react-apexcharts';
 import { Alert, Button, Chip, Skeleton } from '@mui/material';
 import { Download, Refresh } from '@mui/icons-material';
+import LazyApexChart from '../../components/charts/LazyApexChart';
 import SubscriptionRequiredPanel from '../../components/owner/SubscriptionRequiredPanel';
 import {
   OwnerPage,
@@ -156,7 +156,7 @@ export default function OwnerReportsPage() {
             <h2 className="text-lg font-black text-ink">Revenue mix</h2>
             <div className="mt-3 grid gap-4 lg:grid-cols-2">
               <div className="rounded-2xl border border-line bg-surface p-3">
-                <Chart
+                <LazyApexChart
                   type="donut"
                   height={260}
                   series={[
@@ -172,7 +172,7 @@ export default function OwnerReportsPage() {
                 />
               </div>
               <div className="rounded-2xl border border-line bg-surface p-3">
-                <Chart
+                <LazyApexChart
                   type="area"
                   height={260}
                   series={netSeries}
@@ -192,7 +192,7 @@ export default function OwnerReportsPage() {
 
       {section.endsWith('/trends') && (
         <div className="rounded-2xl border border-line bg-surface p-3">
-          <Chart
+          <LazyApexChart
             type="bar"
             height={320}
             series={bookingsSeries}
