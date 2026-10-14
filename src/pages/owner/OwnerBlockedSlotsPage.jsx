@@ -7,6 +7,7 @@ import { Block } from '@mui/icons-material';
 import {
   OwnerEmptyState, OwnerPage, OwnerPageHeader, OwnerSection,
 } from '../../components/owner/OwnerDashboardUi';
+import OwnerResponsiveRows from '../../components/owner/OwnerResponsiveRows';
 import {
   useOwnerBlockedSlots,
   useOwnerCourts,
@@ -104,30 +105,28 @@ export default function OwnerBlockedSlotsPage() {
         ) : rows.length === 0 ? (
           <OwnerEmptyState icon={Block} title="No blocked slots" description="This court has no manual blocks." />
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-line">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-canvas/80 text-xs font-extrabold uppercase tracking-wider text-muted">
-                <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Time</th>
-                  <th className="px-4 py-3">Reason</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-line">
-                    <td className="px-4 py-3 font-bold text-ink">{row.date}</td>
-                    <td className="px-4 py-3 text-muted">{String(row.startTime || '').slice(0, 5)}–{String(row.endTime || '').slice(0, 5)}</td>
-                    <td className="px-4 py-3 text-muted">{row.reason || '—'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button type="button" className="text-sm font-bold text-red-600" onClick={() => remove(row.id)}>Remove</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <OwnerResponsiveRows
+            rows={rows}
+            getRowKey={(row) => row.id}
+            columns={[
+              { key: 'date', label: 'Date', emphasize: true },
+              {
+                key: 'time',
+                label: 'Time',
+                render: (row) => `${String(row.startTime || '').slice(0, 5)}–${String(row.endTime || '').slice(0, 5)}`,
+              },
+              { key: 'reason', label: 'Reason', render: (row) => row.reason || '—' },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (row) => (
+                  <button type="button" className="min-h-11 text-sm font-bold text-red-600" onClick={() => remove(row.id)}>
+                    Remove
+                  </button>
+                ),
+              },
+            ]}
+          />
         )}
       </OwnerSection>
     </OwnerPage>

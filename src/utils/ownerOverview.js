@@ -1,3 +1,5 @@
+import { canUsePromotions, canUseReports } from './subscription';
+
 export function todayOperations(summary) {
   if (!summary || typeof summary.bookingCount !== 'number' || summary.gross == null) return null;
   return {
@@ -26,9 +28,8 @@ const GROUP = {
 export function buildOwnerNavLinks({ role, venueId, venueCount = 0, subscription } = {}) {
   const isStaff = role === 'STAFF';
   const selectedVenueId = venueId && venueId !== 'new' ? venueId : '';
-  const limits = subscription?.limits;
-  const promotionsOk = !limits || limits.promotionsEnabled !== false;
-  const reportsOk = !limits || limits.reportsEnabled !== false;
+  const promotionsOk = canUsePromotions(subscription);
+  const reportsOk = canUseReports(subscription);
 
   const calendarTo = selectedVenueId
     ? `/owner/venues/${selectedVenueId}/calendar`

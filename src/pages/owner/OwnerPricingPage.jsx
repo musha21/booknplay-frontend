@@ -233,11 +233,11 @@ export default function OwnerPricingPage() {
                 <h3 className="text-base font-bold text-ink">Peak pricing</h3>
                 <p className="text-sm text-muted">Applies Mon–Fri for the window below (e.g. 6–10 PM → LKR 4,000).</p>
               </div>
-              <div className="grid gap-2 sm:grid-cols-4">
-                <TextField size="small" label="Start" type="time" value={peakStart} onChange={(e) => setPeakStart(e.target.value)} InputLabelProps={{ shrink: true }} />
-                <TextField size="small" label="End" type="time" value={peakEnd} onChange={(e) => setPeakEnd(e.target.value)} InputLabelProps={{ shrink: true }} />
-                <TextField size="small" label="Price (LKR)" type="number" value={peakPrice} onChange={(e) => setPeakPrice(e.target.value)} />
-                <button type="button" className="btn-outline" onClick={applyPeakHelper}>Apply peak bands</button>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <TextField size="small" label="Start" type="time" value={peakStart} onChange={(e) => setPeakStart(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
+                <TextField size="small" label="End" type="time" value={peakEnd} onChange={(e) => setPeakEnd(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
+                <TextField size="small" label="Price (LKR)" type="number" value={peakPrice} onChange={(e) => setPeakPrice(e.target.value)} fullWidth />
+                <button type="button" className="btn-outline min-h-11 w-full" onClick={applyPeakHelper}>Apply peak bands</button>
               </div>
             </section>
 
@@ -246,11 +246,11 @@ export default function OwnerPricingPage() {
                 <h3 className="text-base font-bold text-ink">Weekend pricing</h3>
                 <p className="text-sm text-muted">Applies Sat–Sun for the window below (e.g. LKR 4,500).</p>
               </div>
-              <div className="grid gap-2 sm:grid-cols-4">
-                <TextField size="small" label="Start" type="time" value={weekendStart} onChange={(e) => setWeekendStart(e.target.value)} InputLabelProps={{ shrink: true }} />
-                <TextField size="small" label="End" type="time" value={weekendEnd} onChange={(e) => setWeekendEnd(e.target.value)} InputLabelProps={{ shrink: true }} />
-                <TextField size="small" label="Price (LKR)" type="number" value={weekendPrice} onChange={(e) => setWeekendPrice(e.target.value)} />
-                <button type="button" className="btn-outline" onClick={applyWeekendHelper}>Apply weekend bands</button>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <TextField size="small" label="Start" type="time" value={weekendStart} onChange={(e) => setWeekendStart(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
+                <TextField size="small" label="End" type="time" value={weekendEnd} onChange={(e) => setWeekendEnd(e.target.value)} InputLabelProps={{ shrink: true }} fullWidth />
+                <TextField size="small" label="Price (LKR)" type="number" value={weekendPrice} onChange={(e) => setWeekendPrice(e.target.value)} fullWidth />
+                <button type="button" className="btn-outline min-h-11 w-full" onClick={applyWeekendHelper}>Apply weekend bands</button>
               </div>
             </section>
 
@@ -284,7 +284,7 @@ export default function OwnerPricingPage() {
               ) : (
                 <div className="space-y-3">
                   {draft.map((rule, index) => (
-                    <div key={index} className="grid gap-2 rounded-2xl border border-line p-3 sm:grid-cols-6">
+                    <div key={index} className="grid grid-cols-1 gap-2 rounded-2xl border border-line p-3 sm:grid-cols-2 lg:grid-cols-6">
                       <TextField select size="small" label="Day" value={rule.dayOfWeek} onChange={(e) => {
                         const value = e.target.value;
                         setDraft((prev) => prev.map((r, i) => (i === index ? { ...r, dayOfWeek: value } : r)));

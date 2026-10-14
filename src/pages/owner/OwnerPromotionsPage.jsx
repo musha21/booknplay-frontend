@@ -5,11 +5,15 @@ import dayjs from 'dayjs';
 import {
   OwnerDialog, OwnerEmptyState, OwnerPage, OwnerPageHeader, OwnerSection,
 } from '../../components/owner/OwnerDashboardUi';
+import OwnerResponsiveRows from '../../components/owner/OwnerResponsiveRows';
+import SubscriptionRequiredPanel from '../../components/owner/SubscriptionRequiredPanel';
 import {
   useCreateOwnerPromotion,
   useDeleteOwnerPromotion,
   useOwnerPromotions,
+  useOwnerSubscription,
 } from '../../hooks/useOwner';
+import { canUsePromotions, isOwnerSubscriptionsEnabled } from '../../utils/subscription';
 
 const emptyForm = () => ({
   code: '',
@@ -23,7 +27,10 @@ const emptyForm = () => ({
 });
 
 export default function OwnerPromotionsPage() {
-  const query = useOwnerPromotions();
+  const subscriptionsEnabled = isOwnerSubscriptionsEnabled();
+  const { data: subscription } = useOwnerSubscription({ enabled: subscriptionsEnabled });
+  const promotionsAllowed = !subscriptionsEnabled || canUsePromotions(subscription);
+  const query = useOwnerPromotions({ enabled: promotionsAllowed });
   const createPromotion = useCreateOwnerPromotion();
   const deletePromotion = useDeleteOwnerPromotion();
   const rows = Array.isArray(query.data) ? query.data : [];
@@ -46,6 +53,15 @@ export default function OwnerPromotionsPage() {
     setOpen(false);
     setForm(emptyForm());
   };
+
+  if (subscriptionsEnabled && subscription && !promotionsAllowed) {
+    return (
+      <SubscriptionRequiredPanel
+        title="Promotions need a higher plan"
+        description="Upgrade to Growth or Pro to unlock discount codes and promotions."
+      />
+    );
+  }
 
   return (
     <OwnerPage>
@@ -70,44 +86,44 @@ export default function OwnerPromotionsPage() {
             action={<button type="button" className="btn-primary" onClick={() => setOpen(true)}>Create promotion</button>}
           />
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-line">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-canvas/80 text-xs font-extrabold uppercase tracking-wider text-muted">
-                <tr>
-                  <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Offer</th>
-                  <th className="px-4 py-3">Dates</th>
-                  <th className="px-4 py-3">Uses</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-line">
-                    <td className="px-4 py-3 font-bold text-ink">{row.code}</td>
-                    <td className="px-4 py-3 text-muted">{row.name}</td>
-                    <td className="px-4 py-3 text-ink">
-                      {row.type === 'PERCENT' ? `${row.value}%` : `LKR ${row.value}`}
-                      {!row.active && <span className="ml-2 text-xs font-extrabold uppercase text-amber-700">Inactive</span>}
-                    </td>
-                    <td className="px-4 py-3 text-muted">{row.startDate} → {row.endDate}</td>
-                    <td className="px-4 py-3 text-muted">{row.redemptionCount ?? 0}{row.maxRedemptions != null ? ` / ${row.maxRedemptions}` : ''}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        className="text-sm font-bold text-red-600"
-                        disabled={deletePromotion.isPending}
-                        onClick={() => deletePromotion.mutate(row.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <OwnerResponsiveRows
+            rows={rows}
+            getRowKey={(row) => row.id}
+            columns={[
+              { key: 'code', label: 'Code', emphasize: true },
+              { key: 'name', label: 'Name' },
+              {
+                key: 'offer',
+                label: 'Offer',
+                render: (row) => (
+                  <>
+                    {row.type === 'PERCENT' ? `${row.value}%` : `LKR ${row.value}`}
+                    {!row.active && <span className="ml-2 text-xs font-extrabold uppercase text-amber-700">Inactive</span>}
+                  </>
+                ),
+              },
+              { key: 'dates', label: 'Dates', render: (row) => `${row.startDate} → ${row.endDate}` },
+              {
+                key: 'uses',
+                label: 'Uses',
+                render: (row) => `${row.redemptionCount ?? 0}${row.maxRedemptions != null ? ` / ${row.maxRedemptions}` : ''}`,
+              },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (row) => (
+                  <button
+                    type="button"
+                    className="min-h-11 text-sm font-bold text-red-600"
+                    disabled={deletePromotion.isPending}
+                    onClick={() => deletePromotion.mutate(row.id)}
+                  >
+                    Delete
+                  </button>
+                ),
+              },
+            ]}
+          />
         )}
       </OwnerSection>
 

@@ -5,7 +5,9 @@ export default {
     "./index.html",
     "./src/**/*.{js,jsx}",
   ],
-  important: '#root',
+  // Use global !important so utilities apply inside MUI portals (Dialog/Menu/Tooltip
+  // render under document.body, outside #root). Scoping to '#root' left dialogs unstyled.
+  important: true,
   theme: {
     extend: {
       colors: {

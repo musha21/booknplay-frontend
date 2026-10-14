@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link as RouterLink, NavLink, useLocation } from 'react-router-dom';
-import { Alert, Button, Chip, Skeleton } from '@mui/material';
+import { Alert, Button, Chip, MenuItem, Skeleton, TextField } from '@mui/material';
 import { Download, Refresh } from '@mui/icons-material';
-import LazyApexChart from '../../components/charts/LazyApexChart';
+import EarningsTrendChart from '../../components/owner/EarningsTrendChart';
 import SubscriptionRequiredPanel from '../../components/owner/SubscriptionRequiredPanel';
 import {
   OwnerPage,
@@ -10,13 +10,21 @@ import {
   OwnerSection,
   OwnerStatRow,
 } from '../../components/owner/OwnerDashboardUi';
-import { useOwnerEarnings, useOwnerSubscription } from '../../hooks/useOwner';
+import OwnerResponsiveRows from '../../components/owner/OwnerResponsiveRows';
+import {
+  useOwnerEarnings,
+  useOwnerSports,
+  useOwnerSubscription,
+  useOwnerVenues,
+} from '../../hooks/useOwner';
 import {
   REPORT_RANGE_OPTIONS,
   REPORT_RANGE_PRESETS,
   buildEarningsCsv,
+  buildReportExportFilename,
   downloadCsv,
   formatReportLkr,
+  normalizeBySportRows,
   normalizeDailyRows,
   reportRangeDates,
 } from '../../utils/ownerReports';
@@ -35,7 +43,40 @@ const SUBNAV = [
   { to: '/owner/reports/export', label: 'Export' },
 ];
 
-function ReportsShell({ children, range, preset, setPreset, onDownload, canDownload }) {
+const dailyColumns = [
+  { key: 'date', label: 'Date', emphasize: true },
+  { key: 'bookingCount', label: 'Bookings' },
+  { key: 'gross', label: 'Gross', render: (row) => `LKR ${formatReportLkr(row.gross)}` },
+  { key: 'commission', label: 'Commission', render: (row) => `LKR ${formatReportLkr(row.commission)}` },
+  { key: 'net', label: 'Net', emphasize: true, render: (row) => `LKR ${formatReportLkr(row.net)}` },
+];
+
+const sportColumns = [
+  { key: 'sportName', label: 'Sport', emphasize: true },
+  { key: 'bookingCount', label: 'Bookings' },
+  { key: 'gross', label: 'Gross', render: (row) => `LKR ${formatReportLkr(row.gross)}` },
+  { key: 'commission', label: 'Commission', render: (row) => `LKR ${formatReportLkr(row.commission)}` },
+  { key: 'net', label: 'Net', emphasize: true, render: (row) => `LKR ${formatReportLkr(row.net)}` },
+];
+
+function ReportsShell({
+  children,
+  range,
+  preset,
+  setPreset,
+  customFrom,
+  customTo,
+  onCustomFrom,
+  onCustomTo,
+  sportId,
+  setSportId,
+  venueId,
+  setVenueId,
+  sports,
+  venues,
+  onDownload,
+  canDownload,
+}) {
   return (
     <OwnerPage className="max-w-6xl">
       <OwnerPageHeader
@@ -43,20 +84,20 @@ function ReportsShell({ children, range, preset, setPreset, onDownload, canDownl
         title="Reports"
         description={`Analytics from ${range.from} to ${range.to}.`}
         actions={(
-          <Button variant="outlined" startIcon={<Download />} disabled={!canDownload} onClick={onDownload}>
+          <Button variant="outlined" startIcon={<Download />} disabled={!canDownload} onClick={onDownload} className="!min-h-11">
             Download CSV
           </Button>
         )}
       />
       <div className="mt-6 flex flex-col gap-6 lg:flex-row">
-        <aside className="w-full shrink-0 lg:w-48">
+        <aside className="w-full shrink-0 lg:w-56">
           <nav className="flex gap-2 overflow-x-auto lg:flex-col" aria-label="Reports sections">
             {SUBNAV.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
-                className={({ isActive }) => `rounded-xl px-4 py-2.5 text-sm font-extrabold ${
+                className={({ isActive }) => `min-h-11 shrink-0 rounded-xl px-4 py-2.5 text-sm font-extrabold ${
                   isActive ? 'bg-navy-900 text-white dark:bg-lime-400 dark:text-navy-900' : 'text-muted hover:bg-canvas'
                 }`}
               >
@@ -64,17 +105,85 @@ function ReportsShell({ children, range, preset, setPreset, onDownload, canDownl
               </NavLink>
             ))}
           </nav>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {REPORT_RANGE_OPTIONS.map((option) => (
-              <Chip
-                key={option.id}
-                clickable
-                size="small"
-                color={preset === option.id ? 'secondary' : 'default'}
-                label={option.label}
-                onClick={() => setPreset(option.id)}
-              />
-            ))}
+
+          <div className="mt-5 space-y-4">
+            <div>
+              <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-muted">Range</p>
+              <div className="flex flex-wrap gap-2">
+                {REPORT_RANGE_OPTIONS.map((option) => (
+                  <Chip
+                    key={option.id}
+                    clickable
+                    size="small"
+                    color={preset === option.id ? 'secondary' : 'default'}
+                    label={option.label}
+                    onClick={() => setPreset(option.id)}
+                  />
+                ))}
+                <Chip
+                  clickable
+                  size="small"
+                  color={preset === REPORT_RANGE_PRESETS.CUSTOM ? 'secondary' : 'default'}
+                  label="Custom"
+                  onClick={() => setPreset(REPORT_RANGE_PRESETS.CUSTOM)}
+                />
+              </div>
+            </div>
+
+            {preset === REPORT_RANGE_PRESETS.CUSTOM ? (
+              <div className="grid gap-3">
+                <TextField
+                  type="date"
+                  label="From"
+                  size="small"
+                  value={customFrom}
+                  onChange={(event) => onCustomFrom(event.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                />
+                <TextField
+                  type="date"
+                  label="To"
+                  size="small"
+                  value={customTo}
+                  onChange={(event) => onCustomTo(event.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                />
+              </div>
+            ) : null}
+
+            <TextField
+              select
+              label="Sport"
+              size="small"
+              value={sportId}
+              onChange={(event) => setSportId(event.target.value)}
+              fullWidth
+            >
+              <MenuItem value="">All sports</MenuItem>
+              {sports.map((sport) => (
+                <MenuItem key={sport.sportId} value={sport.sportId}>
+                  {sport.sportName || sport.sportId}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              select
+              label="Venue"
+              size="small"
+              value={venueId}
+              onChange={(event) => setVenueId(event.target.value)}
+              fullWidth
+            >
+              <MenuItem value="">All venues</MenuItem>
+              {venues.map((venue) => (
+                <MenuItem key={venue.id} value={venue.id}>
+                  {venue.name || venue.id}
+                </MenuItem>
+              ))}
+            </TextField>
           </div>
         </aside>
         <div className="min-w-0 flex-1">{children}</div>
@@ -85,23 +194,69 @@ function ReportsShell({ children, range, preset, setPreset, onDownload, canDownl
 
 export default function OwnerReportsPage() {
   const location = useLocation();
+  const defaultRange = useMemo(() => reportRangeDates(REPORT_RANGE_PRESETS.LAST_30_DAYS), []);
   const [preset, setPreset] = useState(REPORT_RANGE_PRESETS.LAST_30_DAYS);
-  const range = useMemo(() => reportRangeDates(preset), [preset]);
+  const [customFrom, setCustomFrom] = useState(defaultRange.from);
+  const [customTo, setCustomTo] = useState(defaultRange.to);
+  const [sportId, setSportId] = useState('');
+  const [venueId, setVenueId] = useState('');
+
+  const range = useMemo(() => {
+    if (preset === REPORT_RANGE_PRESETS.CUSTOM) {
+      return { from: customFrom, to: customTo };
+    }
+    return reportRangeDates(preset);
+  }, [preset, customFrom, customTo]);
+
+  const customRangeValid = Boolean(range.from && range.to && range.from <= range.to);
+
+  const handlePreset = (next) => {
+    setPreset(next);
+    if (next !== REPORT_RANGE_PRESETS.CUSTOM) {
+      const nextRange = reportRangeDates(next);
+      setCustomFrom(nextRange.from);
+      setCustomTo(nextRange.to);
+    }
+  };
+
   const subscriptionsEnabled = isOwnerSubscriptionsEnabled();
   const { data: subscription } = useOwnerSubscription({ enabled: subscriptionsEnabled });
   const reportsAllowed = !subscriptionsEnabled || canUseReports(subscription);
   const advancedAllowed = !subscriptionsEnabled || canUseAdvancedReports(subscription);
-  const rangeAllowed = !subscriptionsEnabled || canUseReportRange(subscription, range.from, range.to);
+  const rangeAllowed = customRangeValid
+    && (!subscriptionsEnabled || canUseReportRange(subscription, range.from, range.to));
+
+  const sportsQuery = useOwnerSports({ enabled: reportsAllowed });
+  const venuesQuery = useOwnerVenues(false);
+  const sports = Array.isArray(sportsQuery.data) ? sportsQuery.data : [];
+  const venues = Array.isArray(venuesQuery.data) ? venuesQuery.data : [];
+
   const summaryQuery = useOwnerEarnings(range.from, range.to, {
     view: 'reports',
-    enabled: reportsAllowed && rangeAllowed,
+    sportId: sportId || undefined,
+    venueId: venueId || undefined,
+    enabled: reportsAllowed && rangeAllowed && customRangeValid,
   });
   const summary = summaryQuery.data;
   const daily = normalizeDailyRows(summary);
+  const bySport = normalizeBySportRows(summary);
   const section = location.pathname.replace(/\/$/, '');
 
+  const selectedSport = sports.find((sport) => sport.sportId === sportId);
+  const selectedVenue = venues.find((venue) => venue.id === venueId);
+
   const handleDownload = () => {
-    downloadCsv(`booknplay-reports-${range.from}_to_${range.to}.csv`, buildEarningsCsv(daily));
+    downloadCsv(
+      buildReportExportFilename({ from: range.from, to: range.to, sportId, venueId }),
+      buildEarningsCsv(daily, {
+        from: range.from,
+        to: range.to,
+        sportId: sportId || undefined,
+        sportName: selectedSport?.sportName,
+        venueId: venueId || undefined,
+        venueName: selectedVenue?.name,
+      }),
+    );
   };
 
   if (subscriptionsEnabled && subscription && !reportsAllowed) {
@@ -113,11 +268,9 @@ export default function OwnerReportsPage() {
     );
   }
 
-  const chartCategories = daily.map((row) => row.date.slice(5));
-  const bookingsSeries = [{ name: 'Bookings', data: daily.map((row) => row.bookingCount) }];
-  const netSeries = [{ name: 'Net LKR', data: daily.map((row) => row.net) }];
-
-  const body = !rangeAllowed ? (
+  const body = !customRangeValid ? (
+    <Alert severity="warning">Choose a valid custom date range (from must be on or before to).</Alert>
+  ) : !rangeAllowed ? (
     <Alert
       severity="warning"
       action={<Button component={RouterLink} to="/owner/billing" color="inherit" size="small">Billing</Button>}
@@ -154,94 +307,60 @@ export default function OwnerReportsPage() {
           />
           <OwnerSection className="mt-8">
             <h2 className="text-lg font-black text-ink">Revenue mix</h2>
-            <div className="mt-3 grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border border-line bg-surface p-3">
-                <LazyApexChart
-                  type="donut"
-                  height={260}
-                  series={[
-                    Number(summary?.net || 0),
-                    Number(summary?.commission || 0),
-                  ]}
-                  options={{
-                    labels: ['Net to venue', 'Platform commission'],
-                    colors: ['#0f172a', '#84cc16'],
-                    legend: { position: 'bottom' },
-                    chart: { toolbar: { show: false } },
-                  }}
-                />
-              </div>
-              <div className="rounded-2xl border border-line bg-surface p-3">
-                <LazyApexChart
-                  type="area"
-                  height={260}
-                  series={netSeries}
-                  options={{
-                    chart: { toolbar: { show: false }, zoom: { enabled: false } },
-                    dataLabels: { enabled: false },
-                    stroke: { curve: 'smooth', width: 2 },
-                    xaxis: { categories: chartCategories },
-                    colors: ['#84cc16'],
-                  }}
-                />
-              </div>
+            <OwnerResponsiveRows
+              rows={[
+                { key: 'net', share: 'Net to venue', amount: `LKR ${formatReportLkr(summary?.net)}` },
+                { key: 'commission', share: 'Platform commission', amount: `LKR ${formatReportLkr(summary?.commission)}` },
+              ]}
+              getRowKey={(row) => row.key}
+              columns={[
+                { key: 'share', label: 'Share', emphasize: true },
+                { key: 'amount', label: 'Amount' },
+              ]}
+            />
+          </OwnerSection>
+          <OwnerSection className="mt-8">
+            <h2 className="text-lg font-black text-ink">By sport</h2>
+            <p className="mt-1 text-sm text-muted">Booking volume and earnings split across sports in this range.</p>
+            <div className="mt-4">
+              <OwnerResponsiveRows
+                rows={bySport}
+                getRowKey={(row) => row.sportId || row.sportName}
+                emptyMessage="No sport breakdown for this range."
+                columns={sportColumns}
+              />
             </div>
           </OwnerSection>
         </>
       )}
 
       {section.endsWith('/trends') && (
-        <div className="rounded-2xl border border-line bg-surface p-3">
-          <LazyApexChart
-            type="bar"
-            height={320}
-            series={bookingsSeries}
-            options={{
-              chart: { toolbar: { show: false } },
-              xaxis: { categories: chartCategories },
-              colors: ['#0f172a'],
-              plotOptions: { bar: { borderRadius: 6, columnWidth: '45%' } },
-            }}
-          />
-        </div>
+        <OwnerSection>
+          <h2 className="text-lg font-black text-ink">Trends</h2>
+          <p className="mt-1 text-sm text-muted">Daily bookings (bars) and net earnings (line).</p>
+          <div className="mt-4">
+            <EarningsTrendChart summary={summary} />
+          </div>
+        </OwnerSection>
       )}
 
       {section.endsWith('/daily') && (
-        daily.length === 0 ? (
-          <p className="text-sm text-muted">No daily rows for this range.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border border-line">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-canvas/80 text-xs font-extrabold uppercase tracking-wider text-muted">
-                <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Bookings</th>
-                  <th className="px-4 py-3">Gross</th>
-                  <th className="px-4 py-3">Commission</th>
-                  <th className="px-4 py-3">Net</th>
-                </tr>
-              </thead>
-              <tbody>
-                {daily.map((row) => (
-                  <tr key={row.date} className="border-t border-line">
-                    <td className="px-4 py-3 font-bold">{row.date}</td>
-                    <td className="px-4 py-3">{row.bookingCount}</td>
-                    <td className="px-4 py-3">LKR {formatReportLkr(row.gross)}</td>
-                    <td className="px-4 py-3">LKR {formatReportLkr(row.commission)}</td>
-                    <td className="px-4 py-3 font-bold">LKR {formatReportLkr(row.net)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
+        <OwnerResponsiveRows
+          rows={daily}
+          getRowKey={(row) => row.date}
+          emptyMessage="No daily rows for this range."
+          columns={dailyColumns}
+        />
       )}
 
       {section.endsWith('/export') && (
         <div className="rounded-2xl border border-line bg-surface p-6">
           <h2 className="text-lg font-black text-ink">Export</h2>
-          <p className="mt-2 text-sm text-muted">Download the current range as CSV for spreadsheets.</p>
-          <Button className="!mt-4" variant="contained" color="secondary" startIcon={<Download />} disabled={daily.length === 0} onClick={handleDownload}>
+          <p className="mt-2 text-sm text-muted">
+            Download the current filtered range as CSV for spreadsheets.
+            {sportId || venueId ? ' Active sport/venue filters are noted in the file header.' : ''}
+          </p>
+          <Button className="!mt-4 !min-h-11" variant="contained" color="secondary" startIcon={<Download />} disabled={daily.length === 0} onClick={handleDownload}>
             Download CSV
           </Button>
         </div>
@@ -253,9 +372,25 @@ export default function OwnerReportsPage() {
     <ReportsShell
       range={range}
       preset={preset}
-      setPreset={setPreset}
+      setPreset={handlePreset}
+      customFrom={customFrom}
+      customTo={customTo}
+      onCustomFrom={(value) => {
+        setCustomFrom(value);
+        setPreset(REPORT_RANGE_PRESETS.CUSTOM);
+      }}
+      onCustomTo={(value) => {
+        setCustomTo(value);
+        setPreset(REPORT_RANGE_PRESETS.CUSTOM);
+      }}
+      sportId={sportId}
+      setSportId={setSportId}
+      venueId={venueId}
+      setVenueId={setVenueId}
+      sports={sports}
+      venues={venues}
       onDownload={handleDownload}
-      canDownload={daily.length > 0 && !summaryQuery.isLoading && rangeAllowed}
+      canDownload={daily.length > 0 && !summaryQuery.isLoading && rangeAllowed && customRangeValid}
     >
       {body}
     </ReportsShell>

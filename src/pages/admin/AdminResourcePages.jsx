@@ -1,9 +1,16 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button, MenuItem, Select, TextField } from '@mui/material';
 import { setAdminVenueStatus, setBusinessAccess, setBusinessCommission, setBusinessSubscription } from '../../api/admin';
-import { useAdminAction, useAdminAudit, useAdminBusinesses, useAdminCustomers, useAdminVenues } from '../../hooks/useAdmin';
+import {
+  useAdminAction,
+  useAdminAudit,
+  useAdminBusinesses,
+  useAdminCustomers,
+  useAdminSubscriptionPlans,
+  useAdminVenues,
+} from '../../hooks/useAdmin';
 import { PlanCode, SubscriptionStatus } from '../../constants/apiTypes';
-import { planDisplayName, statusDisplayLabel } from '../../utils/subscription';
+import { planDisplayName, resolveTrialDurationDays, statusDisplayLabel } from '../../utils/subscription';
 import { VENUE_STATUS_OPTIONS, venueStatusLabel } from '../../utils/venueStatus';
 
 const Shell = ({ title, children }) => (
@@ -72,6 +79,9 @@ function CommissionCell({ business, onSave, pending }) {
 
 export function AdminBusinessesPage() {
   const { data = [] } = useAdminBusinesses();
+  const { data: plans = [] } = useAdminSubscriptionPlans();
+  const trialPlan = plans.find((plan) => String(plan.code).toUpperCase() === PlanCode.TRIAL);
+  const trialDays = resolveTrialDurationDays(trialPlan?.trialDurationDays);
   const accessAction = useAdminAction(
     ({ id, params }) => setBusinessAccess(id, params),
     ['admin-businesses', 'admin-dashboard'],
@@ -122,7 +132,7 @@ export function AdminBusinessesPage() {
                       payload: {
                         planCode: PlanCode.TRIAL,
                         status: SubscriptionStatus.TRIALING,
-                        trialEndsAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+                        trialEndsAt: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString(),
                         reason: 'Extended trial in admin portal',
                       },
                     })}

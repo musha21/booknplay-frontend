@@ -11,6 +11,13 @@ export const TRIAL_DURATION_DAYS = 90;
 /** Ranges longer than this many days require advancedReportsEnabled. */
 export const ADVANCED_REPORTS_DAY_THRESHOLD = 31;
 
+/** Prefer configured catalog value (1–365); otherwise fall back to {@link TRIAL_DURATION_DAYS}. */
+export function resolveTrialDurationDays(configured) {
+  const n = Number(configured);
+  if (Number.isFinite(n) && n >= 1 && n <= 365) return Math.trunc(n);
+  return TRIAL_DURATION_DAYS;
+}
+
 export const BILLING_INTERVAL = /** @type {const} */ ({
   MONTHLY: 'MONTHLY',
   YEARLY: 'YEARLY',
@@ -96,16 +103,24 @@ export function accessReason(subscription) {
   return SubscriptionAccessReason.SUBSCRIBED;
 }
 
-export function trialProgress(subscription) {
+export function trialProgress(subscription, now = dayjs()) {
   if (!isTrialing(subscription)) return null;
-  const remaining = daysRemaining(subscription);
+  const remaining = daysRemaining(subscription, now);
   if (remaining == null) return null;
-  const used = Math.min(TRIAL_DURATION_DAYS, Math.max(0, TRIAL_DURATION_DAYS - remaining));
+
+  const start = subscription?.trialStartsAt ? dayjs(subscription.trialStartsAt) : null;
+  const end = subscription?.trialEndsAt ? dayjs(subscription.trialEndsAt) : null;
+  let total = TRIAL_DURATION_DAYS;
+  if (start?.isValid() && end?.isValid() && end.isAfter(start)) {
+    total = Math.max(1, Math.ceil(end.diff(start, 'day', true)));
+  }
+
+  const used = Math.min(total, Math.max(0, total - remaining));
   return {
     remaining,
     used,
-    total: TRIAL_DURATION_DAYS,
-    percent: Math.round((used / TRIAL_DURATION_DAYS) * 100),
+    total,
+    percent: Math.round((used / total) * 100),
   };
 }
 
@@ -161,6 +176,7 @@ export const FALLBACK_PLAN_LIMITS = {
     earningsEnabled: true,
     reportsEnabled: true,
     advancedReportsEnabled: true,
+    promotionsEnabled: true,
     commissionPercent: 0,
   },
   [PlanCode.STARTER]: {
@@ -172,6 +188,7 @@ export const FALLBACK_PLAN_LIMITS = {
     earningsEnabled: true,
     reportsEnabled: false,
     advancedReportsEnabled: false,
+    promotionsEnabled: false,
     commissionPercent: 10,
   },
   [PlanCode.GROWTH]: {
@@ -183,6 +200,7 @@ export const FALLBACK_PLAN_LIMITS = {
     earningsEnabled: true,
     reportsEnabled: true,
     advancedReportsEnabled: false,
+    promotionsEnabled: true,
     commissionPercent: 10,
   },
   [PlanCode.PRO]: {
@@ -194,6 +212,7 @@ export const FALLBACK_PLAN_LIMITS = {
     earningsEnabled: true,
     reportsEnabled: true,
     advancedReportsEnabled: true,
+    promotionsEnabled: true,
     commissionPercent: 10,
   },
 };
@@ -282,6 +301,7 @@ export function resolvePlanLimits(source) {
     earningsEnabled: asBool(raw.earningsEnabled, fallback.earningsEnabled),
     reportsEnabled: asBool(raw.reportsEnabled, fallback.reportsEnabled),
     advancedReportsEnabled: asBool(raw.advancedReportsEnabled, fallback.advancedReportsEnabled),
+    promotionsEnabled: asBool(raw.promotionsEnabled, fallback.promotionsEnabled),
     commissionPercent: Number.isFinite(commissionRaw) ? commissionRaw : fallback.commissionPercent,
   };
 }
@@ -340,6 +360,11 @@ export function canUseReports(subscription) {
 export function canUseAdvancedReports(subscription) {
   if (!subscription) return true;
   return resolvePlanLimits(subscription).advancedReportsEnabled;
+}
+
+export function canUsePromotions(subscription) {
+  if (!subscription) return true;
+  return resolvePlanLimits(subscription).promotionsEnabled;
 }
 
 /** Inclusive day span for a YYYY-MM-DD from/to pair. */
