@@ -2,14 +2,11 @@ import { lazy, Suspense, useMemo } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { CssBaseline, ThemeProvider } from '@mui/material';
-import { LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { Toaster } from 'sonner';
 import queryClient from './lib/queryClient';
 import { createAppTheme } from './theme/muiTheme';
 import { useThemeMode } from './theme/ThemeModeContext';
 import RouteLoader from './components/ui/RouteLoader';
-import { AdminAuditPage, AdminBusinessesPage, AdminCustomersPage, AdminVenuesPage } from './pages/admin/AdminResourcePages';
 
 const Layout = lazy(() => import('./components/layout/Layout'));
 const ProtectedRoute = lazy(() => import('./components/layout/ProtectedRoute'));
@@ -70,6 +67,18 @@ const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage')
 const AdminHomepagePage = lazy(() => import('./pages/admin/AdminHomepagePage'));
 const AdminPlansPage = lazy(() => import('./pages/admin/AdminPlansPage'));
 const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage'));
+const AdminBusinessesPage = lazy(() =>
+  import('./pages/admin/AdminResourcePages').then((m) => ({ default: m.AdminBusinessesPage })),
+);
+const AdminVenuesPage = lazy(() =>
+  import('./pages/admin/AdminResourcePages').then((m) => ({ default: m.AdminVenuesPage })),
+);
+const AdminCustomersPage = lazy(() =>
+  import('./pages/admin/AdminResourcePages').then((m) => ({ default: m.AdminCustomersPage })),
+);
+const AdminAuditPage = lazy(() =>
+  import('./pages/admin/AdminResourcePages').then((m) => ({ default: m.AdminAuditPage })),
+);
 
 const router = createBrowserRouter([
   {
@@ -163,11 +172,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <CssBaseline />
-          <Suspense fallback={<RouteLoader />}><RouterProvider router={router} /></Suspense>
-          <Toaster position="top-right" richColors theme={resolvedMode} />
-        </LocalizationProvider>
+        <CssBaseline />
+        <Suspense fallback={<RouteLoader />}><RouterProvider router={router} /></Suspense>
+        <Toaster position="top-right" richColors theme={resolvedMode} />
       </ThemeProvider>
     </QueryClientProvider>
   );
