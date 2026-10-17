@@ -54,7 +54,7 @@ export const useOwnerRegister = () => {
     mutationFn: (data) => ownerAuthApi.registerOwner(data),
     onSuccess: (res) => {
       persistOwnerSession(unwrap(res), storeLogin);
-      toast.success('Business registered — 3 months free trial started');
+      toast.success('Business registered — free trial started');
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Registration failed');
@@ -281,13 +281,17 @@ export const useOwnerCalendar = (venueId, date) =>
   });
 
 export const useOwnerEarnings = (from, to, options = {}) => {
-  const { enabled, view, ...queryOptions } = options;
+  const { enabled, view, sportId, venueId, ...queryOptions } = options;
+  const sportKey = sportId || '';
+  const venueKey = venueId || '';
   return useQuery({
-    queryKey: ['owner', 'earnings', from, to, view || ''],
+    queryKey: ['owner', 'earnings', from, to, view || '', sportKey, venueKey],
     queryFn: async () => unwrap(await ownerEarningsApi.getEarningsSummary({
       from,
       to,
       ...(view ? { view } : {}),
+      ...(sportKey ? { sportId: sportKey } : {}),
+      ...(venueKey ? { venueId: venueKey } : {}),
     })),
     enabled: enabled !== false && Boolean(from && to),
     ...queryOptions,

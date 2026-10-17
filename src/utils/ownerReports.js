@@ -4,6 +4,7 @@ export const REPORT_RANGE_PRESETS = {
   LAST_7_DAYS: 'LAST_7_DAYS',
   LAST_30_DAYS: 'LAST_30_DAYS',
   THIS_MONTH: 'THIS_MONTH',
+  CUSTOM: 'CUSTOM',
 };
 
 export const REPORT_RANGE_OPTIONS = [
@@ -35,14 +36,33 @@ export function normalizeDailyRows(summary) {
   })).filter((row) => row.date);
 }
 
-export function buildEarningsCsv(rows) {
+export function normalizeBySportRows(summary) {
+  const rows = Array.isArray(summary?.bySport) ? summary.bySport : [];
+  return rows.map((row) => ({
+    sportId: String(row.sportId || ''),
+    sportName: String(row.sportName || row.sportId || 'Unknown'),
+    bookingCount: Number(row.bookingCount ?? 0),
+    gross: Number(row.gross ?? 0),
+    commission: Number(row.commission ?? 0),
+    net: Number(row.net ?? row.gross ?? 0),
+  })).filter((row) => row.sportId || row.sportName);
+}
+
+export function buildEarningsCsv(rows, meta = {}) {
   const header = ['Date', 'Bookings', 'Gross', 'Commission', 'Net'];
   const escape = (value) => {
     const text = String(value ?? '');
     if (/[",\n]/.test(text)) return `"${text.replaceAll('"', '""')}"`;
     return text;
   };
+  const filterLines = [];
+  if (meta.from || meta.to) {
+    filterLines.push(`# Range,${escape(meta.from || '')},${escape(meta.to || '')}`);
+  }
+  if (meta.sportId) filterLines.push(`# Sport,${escape(meta.sportId)},${escape(meta.sportName || '')}`);
+  if (meta.venueId) filterLines.push(`# Venue,${escape(meta.venueId)},${escape(meta.venueName || '')}`);
   const lines = [
+    ...filterLines,
     header.join(','),
     ...rows.map((row) => [
       escape(row.date),
@@ -70,4 +90,11 @@ export function formatReportLkr(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+export function buildReportExportFilename({ from, to, sportId, venueId }) {
+  const parts = [`booknplay-reports-${from}_to_${to}`];
+  if (sportId) parts.push(`sport-${sportId}`);
+  if (venueId) parts.push(`venue-${venueId}`);
+  return `${parts.join('_')}.csv`;
 }

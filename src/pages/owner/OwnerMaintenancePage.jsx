@@ -7,6 +7,7 @@ import { Build } from '@mui/icons-material';
 import {
   OwnerEmptyState, OwnerPage, OwnerPageHeader, OwnerSection,
 } from '../../components/owner/OwnerDashboardUi';
+import OwnerResponsiveRows from '../../components/owner/OwnerResponsiveRows';
 import {
   useOwnerCourts,
   useOwnerMaintenance,
@@ -101,30 +102,33 @@ export default function OwnerMaintenancePage() {
         ) : rows.length === 0 ? (
           <OwnerEmptyState icon={Build} title="No maintenance windows" description="This court has no scheduled downtime." />
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-line">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-canvas/80 text-xs font-extrabold uppercase tracking-wider text-muted">
-                <tr>
-                  <th className="px-4 py-3">Starts</th>
-                  <th className="px-4 py-3">Ends</th>
-                  <th className="px-4 py-3">Description</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-line">
-                    <td className="px-4 py-3 font-bold text-ink">{row.startDateTime ? new Date(row.startDateTime).toLocaleString() : '—'}</td>
-                    <td className="px-4 py-3 text-muted">{row.endDateTime ? new Date(row.endDateTime).toLocaleString() : '—'}</td>
-                    <td className="px-4 py-3 text-muted">{row.description || '—'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button type="button" className="text-sm font-bold text-red-600" onClick={() => remove(row.id)}>Remove</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <OwnerResponsiveRows
+            rows={rows}
+            getRowKey={(row) => row.id}
+            columns={[
+              {
+                key: 'starts',
+                label: 'Starts',
+                emphasize: true,
+                render: (row) => (row.startDateTime ? new Date(row.startDateTime).toLocaleString() : '—'),
+              },
+              {
+                key: 'ends',
+                label: 'Ends',
+                render: (row) => (row.endDateTime ? new Date(row.endDateTime).toLocaleString() : '—'),
+              },
+              { key: 'description', label: 'Description', render: (row) => row.description || '—' },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (row) => (
+                  <button type="button" className="min-h-11 text-sm font-bold text-red-600" onClick={() => remove(row.id)}>
+                    Remove
+                  </button>
+                ),
+              },
+            ]}
+          />
         )}
       </OwnerSection>
     </OwnerPage>

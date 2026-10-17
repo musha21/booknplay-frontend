@@ -11,6 +11,7 @@ import {
   canCreateVenue,
   canMutateOwner,
   canUseAdvancedReports,
+  canUsePromotions,
   canUseReportRange,
   canUseReports,
   daysRemaining,
@@ -23,8 +24,10 @@ import {
   planLimitMessage,
   resolvePlanLimits,
   resolvePlans,
+  resolveTrialDurationDays,
   trialProgress,
   FALLBACK_SUBSCRIPTION_PLANS,
+  TRIAL_DURATION_DAYS,
 } from './subscription';
 
 describe('subscription helpers', () => {
@@ -121,6 +124,9 @@ describe('subscription helpers', () => {
   it('resolves plan limits from subscription or fallback by plan code', () => {
     expect(resolvePlanLimits({ planCode: PlanCode.STARTER }).maxVenues).toBe(1);
     expect(resolvePlanLimits({ planCode: PlanCode.STARTER }).reportsEnabled).toBe(false);
+    expect(resolvePlanLimits({ planCode: PlanCode.STARTER }).promotionsEnabled).toBe(false);
+    expect(resolvePlanLimits({ planCode: PlanCode.GROWTH }).promotionsEnabled).toBe(true);
+    expect(resolvePlanLimits({ planCode: PlanCode.TRIAL }).promotionsEnabled).toBe(true);
     expect(resolvePlanLimits({
       planCode: PlanCode.STARTER,
       limits: {
@@ -174,6 +180,25 @@ describe('subscription helpers', () => {
     expect(canUseAdvancedReports(growth)).toBe(false);
     expect(canUseReportRange(growth, '2026-01-01', '2026-01-30')).toBe(true);
     expect(canUseReportRange(growth, '2026-01-01', '2026-02-15')).toBe(false);
+  });
+
+  it('gates promotions by plan entitlement', () => {
+    expect(canUsePromotions(null)).toBe(true);
+    expect(canUsePromotions({
+      planCode: PlanCode.STARTER,
+      limits: { promotionsEnabled: false },
+    })).toBe(false);
+    expect(canUsePromotions({
+      planCode: PlanCode.GROWTH,
+      limits: { promotionsEnabled: true },
+    })).toBe(true);
+  });
+
+  it('resolves trial duration from catalog or platform default', () => {
+    expect(resolveTrialDurationDays(14)).toBe(14);
+    expect(resolveTrialDurationDays(null)).toBe(TRIAL_DURATION_DAYS);
+    expect(resolveTrialDurationDays(0)).toBe(TRIAL_DURATION_DAYS);
+    expect(resolveTrialDurationDays(400)).toBe(TRIAL_DURATION_DAYS);
   });
 
   it('detects PLAN_LIMIT API errors', () => {

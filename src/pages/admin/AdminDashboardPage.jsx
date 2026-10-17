@@ -1,14 +1,8 @@
-import Chart from 'react-apexcharts';
 import { Business, EventNote, Payments, People, Stadium, CardMembership, Timelapse, WarningAmber } from '@mui/icons-material';
 import { Skeleton } from '@mui/material';
 import { useAdminDashboard } from '../../hooks/useAdmin';
 import { formatCurrency } from '../../utils/formatters';
 import { planDisplayName } from '../../utils/subscription';
-
-const chartTheme = {
-  foreColor: '#64748b',
-  fontFamily: 'inherit',
-};
 
 function KpiCard({ icon: Icon, label, value, loading }) {
   return (
@@ -23,14 +17,6 @@ function KpiCard({ icon: Icon, label, value, loading }) {
 export default function AdminDashboardPage() {
   const { data, isLoading } = useAdminDashboard();
   const byPlan = Array.isArray(data?.subscriptionByPlan) ? data.subscriptionByPlan : [];
-
-  const pieSeries = byPlan.map((row) => Number(row.businessCount || 0));
-  const pieLabels = byPlan.map((row) => planDisplayName(row.code) || row.name || row.code);
-  const barCategories = byPlan.map((row) => planDisplayName(row.code) || row.code);
-  const barSeries = [{
-    name: 'Commission %',
-    data: byPlan.map((row) => Number(row.commissionPercent ?? 0)),
-  }];
 
   const platformCards = [
     [People, 'Customers', data?.customers],
@@ -75,68 +61,9 @@ export default function AdminDashboardPage() {
           ))}
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <div className="surface-card p-5">
-            <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted">Businesses by plan</h3>
-            {isLoading ? (
-              <Skeleton className="!mt-4" variant="rounded" height={280} />
-            ) : pieSeries.every((n) => n === 0) ? (
-              <p className="mt-8 text-sm text-muted">No subscription rows yet.</p>
-            ) : (
-              <div className="mt-2">
-                <Chart
-                  type="donut"
-                  height={300}
-                  series={pieSeries}
-                  options={{
-                    chart: { type: 'donut', toolbar: { show: false }, ...chartTheme },
-                    labels: pieLabels,
-                    legend: { position: 'bottom' },
-                    dataLabels: { enabled: true },
-                    colors: ['#84cc16', '#0f172a', '#38bdf8', '#f59e0b'],
-                    plotOptions: {
-                      pie: {
-                        donut: {
-                          labels: {
-                            show: true,
-                            total: { show: true, label: 'Businesses' },
-                          },
-                        },
-                      },
-                    },
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="surface-card p-5">
-            <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted">Commission by plan</h3>
-            {isLoading ? (
-              <Skeleton className="!mt-4" variant="rounded" height={280} />
-            ) : (
-              <div className="mt-2">
-                <Chart
-                  type="bar"
-                  height={300}
-                  series={barSeries}
-                  options={{
-                    chart: { type: 'bar', toolbar: { show: false }, ...chartTheme },
-                    plotOptions: { bar: { borderRadius: 8, columnWidth: '45%' } },
-                    dataLabels: { enabled: true, formatter: (value) => `${value}%` },
-                    xaxis: { categories: barCategories },
-                    yaxis: {
-                      max: 100,
-                      labels: { formatter: (value) => `${value}%` },
-                    },
-                    colors: ['#0f172a'],
-                    tooltip: { y: { formatter: (value) => `${value}%` } },
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        {!isLoading && byPlan.length === 0 && (
+          <p className="mt-6 text-sm text-muted">No subscription rows yet.</p>
+        )}
 
         {!isLoading && byPlan.length > 0 && (
           <div className="surface-card mt-6 overflow-x-auto">

@@ -90,7 +90,7 @@ export default function OwnerBillingPage() {
       <OwnerPageHeader
         eyebrow="Workspace"
         title="Billing"
-        description="New businesses get 3 months free. After the trial, pick a plan to keep full owner access. Booking commission stays separate."
+        description="New businesses get a free trial. After the trial, pick a plan to keep full owner access. Booking commission stays separate."
       />
 
       <OwnerSection className="mt-8 overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-navy-900 via-navy-900 to-slate-800 p-6 text-white sm:p-8">
@@ -100,7 +100,7 @@ export default function OwnerBillingPage() {
           <p className="text-sm text-white/70">Could not load subscription status. Try again shortly.</p>
         ) : !subscription ? (
           <p className="text-sm text-white/70">
-            No subscription record yet. When the billing API is live, new businesses receive a 90-day free trial automatically.
+            No subscription record yet. When the billing API is live, new businesses receive a free trial automatically.
           </p>
         ) : (
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">

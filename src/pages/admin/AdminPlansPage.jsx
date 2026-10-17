@@ -43,6 +43,10 @@ function draftFromPlan(plan) {
     earningsEnabled: limits.earningsEnabled,
     reportsEnabled: limits.reportsEnabled,
     advancedReportsEnabled: limits.advancedReportsEnabled,
+    promotionsEnabled: limits.promotionsEnabled,
+    trialDurationDays: plan.trialDurationDays == null || plan.trialDurationDays === ''
+      ? ''
+      : String(plan.trialDurationDays),
     reason: '',
   };
 }
@@ -69,8 +73,9 @@ export default function AdminPlansPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
       queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
       toast.success('Admin action completed');
+      // Clear so the next plans fetch re-hydrates draft from API (not a stale mask).
+      loadedCodeRef.current = '';
       if (saved) {
-        loadedCodeRef.current = String(saved.code || selectedCode);
         setDraft(draftFromPlan(saved));
       }
     },
@@ -133,6 +138,16 @@ export default function AdminPlansPage() {
       return;
     }
 
+    const isTrial = String(selected.code).toUpperCase() === PlanCode.TRIAL;
+    let trialDurationDays;
+    if (isTrial) {
+      trialDurationDays = Number(draft.trialDurationDays);
+      if (!Number.isFinite(trialDurationDays) || trialDurationDays < 1 || trialDurationDays > 365) {
+        toast.error('Trial duration must be between 1 and 365 days');
+        return;
+      }
+    }
+
     const payload = {
       name: draft.name,
       description: draft.description,
@@ -155,6 +170,8 @@ export default function AdminPlansPage() {
       earningsEnabled: draft.earningsEnabled,
       reportsEnabled: draft.reportsEnabled,
       advancedReportsEnabled: draft.advancedReportsEnabled,
+      promotionsEnabled: draft.promotionsEnabled,
+      ...(isTrial ? { trialDurationDays } : {}),
       reason,
     };
 
@@ -166,8 +183,9 @@ export default function AdminPlansPage() {
       <p className="eyebrow">Platform management</p>
       <h1 className="mt-2 text-3xl font-black">Subscription plans</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        Edit prices, platform commission, and entitlements for TRIAL, STARTER, GROWTH, and PRO.
-        Free trial defaults to 0% commission. Changes apply on the next plan assign.
+        Edit prices, platform commission, entitlements, and free-trial length for TRIAL, STARTER, GROWTH, and PRO.
+        Plan codes are fixed; use Active to hide a plan from the owner upgrade catalog (existing subscribers keep their plan).
+        Free trial defaults to 0% commission. Trial duration changes apply to new registrations only (not active trials).
       </p>
 
       {isLoading || !draft || !selected ? (
@@ -255,6 +273,18 @@ export default function AdminPlansPage() {
                 onChange={(e) => setField('sortOrder', e.target.value)}
                 fullWidth
               />
+              {String(selected.code).toUpperCase() === PlanCode.TRIAL ? (
+                <TextField
+                  label="Trial duration (days)"
+                  type="number"
+                  value={draft.trialDurationDays}
+                  onChange={(e) => setField('trialDurationDays', e.target.value)}
+                  fullWidth
+                  required
+                  helperText="Required. Platform default is 90 until you set a value. Applies to new registrations only; existing trials keep their end date."
+                  inputProps={{ min: 1, max: 365, step: 1 }}
+                />
+              ) : null}
               <TextField
                 className="sm:col-span-2"
                 label="Features (comma-separated)"
@@ -331,9 +361,13 @@ export default function AdminPlansPage() {
               <Flag label="Earnings" checked={draft.earningsEnabled} onChange={(v) => setField('earningsEnabled', v)} />
               <Flag label="Reports" checked={draft.reportsEnabled} onChange={(v) => setField('reportsEnabled', v)} />
               <Flag label="Advanced reports" checked={draft.advancedReportsEnabled} onChange={(v) => setField('advancedReportsEnabled', v)} />
+              <Flag label="Promotions" checked={draft.promotionsEnabled} onChange={(v) => setField('promotionsEnabled', v)} />
               <Flag label="Highlighted" checked={draft.highlighted} onChange={(v) => setField('highlighted', v)} />
               <Flag label="Active in catalog" checked={draft.active} onChange={(v) => setField('active', v)} />
             </div>
+            <p className="text-xs text-muted">
+              Turning off Active hides this plan from owner billing upgrades; it does not delete the plan or cancel existing subscriptions.
+            </p>
 
             <TextField
               required

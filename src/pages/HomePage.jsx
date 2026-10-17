@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bolt, CalendarMonth, Verified } from '@mui/icons-material';
+import { Skeleton } from '@mui/material';
 import { toast } from 'sonner';
 import { useBusinesses, useHomepageConfig, useSports, useVenues } from '../hooks/useVenues';
 import BookingHeroFallback from '../components/home/BookingHeroFallback';
@@ -9,8 +10,9 @@ import PublicPromotionsStrip from '../components/home/PublicPromotionsStrip';
 import VenueShowcase from '../components/home/VenueShowcase';
 import MobileAppBanner from '../components/home/MobileAppBanner';
 import { SportCategoryGrid } from '../components/home/SportCategoryButton';
-import AccordionGallery from '../components/ui/AccordionGallery';
 import heroArena from '../assets/brand/midnight-multisport-arena.png';
+
+const AccordionGallery = lazy(() => import('../components/ui/AccordionGallery'));
 import { MAIN_SPORT_FALLBACKS, MAIN_SPORT_PRIORITY, curateMainSports, curateShowcaseSports, mergeDynamicSports } from '../constants/sports';
 import { buildVenueQuery, LAUNCH_CITY } from '../utils/searchParams';
 import mediaUrl from '../utils/mediaUrl';
@@ -400,23 +402,25 @@ export default function HomePage() {
             </div>
             <p className="hp-section-note">Expand a panel, then tap again to see their venues below.</p>
           </div>
-          <AccordionGallery
-            items={premiumAccordionItems}
-            accentColor="#C7F84B"
-            overlayColor="#061032"
-            textColor="#ffffff"
-            grayscale
-            trigger="click"
-            height={420}
-            defaultIndex={0}
-            autoPlay={homepage.premiumSliderAutoplay !== false}
-            autoPlayInterval={(Math.min(3, Math.max(2, Number(homepage.premiumSliderSeconds) || 2.5)) * 1000)}
-            onItemActivate={(item) => {
-              if (item?.businessId) {
-                showBusinessVenues({ businessId: item.businessId, label: item.label });
-              }
-            }}
-          />
+          <Suspense fallback={<Skeleton variant="rounded" height={420} className="!mt-2" />}>
+            <AccordionGallery
+              items={premiumAccordionItems}
+              accentColor="#C7F84B"
+              overlayColor="#061032"
+              textColor="#ffffff"
+              grayscale
+              trigger="click"
+              height={420}
+              defaultIndex={0}
+              autoPlay={homepage.premiumSliderAutoplay !== false}
+              autoPlayInterval={(Math.min(3, Math.max(2, Number(homepage.premiumSliderSeconds) || 2.5)) * 1000)}
+              onItemActivate={(item) => {
+                if (item?.businessId) {
+                  showBusinessVenues({ businessId: item.businessId, label: item.label });
+                }
+              }}
+            />
+          </Suspense>
         </section>
       )}
 

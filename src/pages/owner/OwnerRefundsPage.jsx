@@ -4,6 +4,7 @@ import { AccountBalanceWallet } from '@mui/icons-material';
 import {
   OwnerDialog, OwnerEmptyState, OwnerPage, OwnerPageHeader, OwnerSection,
 } from '../../components/owner/OwnerDashboardUi';
+import OwnerResponsiveRows from '../../components/owner/OwnerResponsiveRows';
 import { useOwnerRefunds, useRequestOwnerRefund } from '../../hooks/useOwner';
 
 const pageRows = (data) => (Array.isArray(data) ? data : (data?.content ?? []));
@@ -47,34 +48,27 @@ export default function OwnerRefundsPage() {
             action={<button type="button" className="btn-primary" onClick={() => setOpen(true)}>Request refund</button>}
           />
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-line">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-canvas/80 text-xs font-extrabold uppercase tracking-wider text-muted">
-                <tr>
-                  <th className="px-4 py-3">Booking</th>
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Venue</th>
-                  <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Processed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-line">
-                    <td className="px-4 py-3 font-bold text-ink">{row.bookingRef || row.bookingId?.slice(0, 8)}</td>
-                    <td className="px-4 py-3 text-muted">{row.customerName || '—'}</td>
-                    <td className="px-4 py-3 text-muted">{row.venueName}</td>
-                    <td className="px-4 py-3 font-bold text-ink" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      LKR {Number(row.amount || 0).toLocaleString('en-LK')}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-muted">{row.status}</td>
-                    <td className="px-4 py-3 text-muted">{row.processedAt ? new Date(row.processedAt).toLocaleString() : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <OwnerResponsiveRows
+            rows={rows}
+            getRowKey={(row) => row.id}
+            columns={[
+              { key: 'booking', label: 'Booking', emphasize: true, render: (row) => row.bookingRef || row.bookingId?.slice(0, 8) },
+              { key: 'customer', label: 'Customer', render: (row) => row.customerName || '—' },
+              { key: 'venue', label: 'Venue', render: (row) => row.venueName },
+              {
+                key: 'amount',
+                label: 'Amount',
+                emphasize: true,
+                render: (row) => `LKR ${Number(row.amount || 0).toLocaleString('en-LK')}`,
+              },
+              { key: 'status', label: 'Status', render: (row) => row.status },
+              {
+                key: 'processed',
+                label: 'Processed',
+                render: (row) => (row.processedAt ? new Date(row.processedAt).toLocaleString() : '—'),
+              },
+            ]}
+          />
         )}
       </OwnerSection>
 

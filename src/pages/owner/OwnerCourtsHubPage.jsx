@@ -5,6 +5,7 @@ import { Stadium } from '@mui/icons-material';
 import {
   OwnerEmptyState, OwnerPage, OwnerPageHeader, OwnerSection,
 } from '../../components/owner/OwnerDashboardUi';
+import OwnerResponsiveRows from '../../components/owner/OwnerResponsiveRows';
 import { useOwnerCourts, useOwnerVenues } from '../../hooks/useOwner';
 import ownerVenuesApi from '../../api/ownerVenues';
 
@@ -94,34 +95,25 @@ export default function OwnerCourtsHubPage() {
             )}
           />
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-line">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-canvas/80 text-xs font-extrabold uppercase tracking-wider text-muted">
-                <tr>
-                  <th className="px-4 py-3">Court</th>
-                  <th className="px-4 py-3">Venue</th>
-                  <th className="px-4 py-3">Sport</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((court) => (
-                  <tr key={court.id} className="border-t border-line">
-                    <td className="px-4 py-3 font-bold text-ink">{court.name}</td>
-                    <td className="px-4 py-3 text-muted">{court.venueName}</td>
-                    <td className="px-4 py-3 text-muted">{court.sportName || court.sport?.name || '—'}</td>
-                    <td className="px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-muted">{court.status || '—'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <RouterLink to={`/owner/venues/${court.venueId}/courts`} className="text-sm font-bold text-navy-700 dark:text-lime-300">
-                        Manage
-                      </RouterLink>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <OwnerResponsiveRows
+            rows={rows}
+            getRowKey={(court) => court.id}
+            columns={[
+              { key: 'name', label: 'Court', emphasize: true },
+              { key: 'venueName', label: 'Venue' },
+              { key: 'sport', label: 'Sport', render: (court) => court.sportName || court.sport?.name || '—' },
+              { key: 'status', label: 'Status', render: (court) => court.status || '—' },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (court) => (
+                  <RouterLink to={`/owner/venues/${court.venueId}/courts`} className="inline-flex min-h-11 items-center text-sm font-bold text-navy-700 dark:text-lime-300">
+                    Manage
+                  </RouterLink>
+                ),
+              },
+            ]}
+          />
         )}
       </OwnerSection>
     </OwnerPage>

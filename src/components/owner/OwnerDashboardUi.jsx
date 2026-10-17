@@ -1,16 +1,21 @@
-import { Dialog, DialogActions, DialogContent, DialogTitle, Skeleton } from '@mui/material';
+import { Dialog, DialogActions, DialogContent, DialogTitle, Skeleton, useMediaQuery, useTheme } from '@mui/material';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { dialogPop, fadeUp, pageEnter, reducedFade, sectionEnter, staggerContainer } from '../../motion/variants';
+import { fadeUp, pageEnter, reducedFade, sectionEnter, staggerContainer } from '../../motion/variants';
+export { default as OwnerResponsiveRows } from './OwnerResponsiveRows';
 
 export function OwnerPageHeader({ eyebrow, title, description, actions }) {
   return (
-    <header className="flex flex-col items-start gap-5">
+    <header className="flex w-full min-w-0 flex-col items-stretch gap-4 sm:items-start sm:gap-5">
       <div className="min-w-0 max-w-3xl">
         {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-        <h1 className="mt-2 text-balance pl-[0.04em] text-3xl font-black leading-tight tracking-[-0.02em] text-ink sm:text-4xl">{title}</h1>
+        <h1 className="mt-2 text-balance pl-[0.04em] text-2xl font-black leading-tight tracking-[-0.02em] text-ink sm:text-4xl">{title}</h1>
         {description && <p className="mt-2 text-pretty text-sm leading-6 text-muted sm:text-base">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && (
+        <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap [&_.MuiButton-root]:w-full sm:[&_.MuiButton-root]:w-auto [&_a]:w-full sm:[&_a]:w-auto [&_button]:w-full sm:[&_button]:w-auto">
+          {actions}
+        </div>
+      )}
     </header>
   );
 }
@@ -93,13 +98,15 @@ function StatFigure({ item, large, reservePrefix }) {
         </p>
       ) : null}
       <p
-        className={`font-black leading-none tracking-[-0.03em] text-ink ${large ? 'text-4xl sm:text-5xl' : 'text-3xl'} ${item.prefix ? 'mt-2' : ''}`}
+        className={`min-w-0 break-words font-black leading-tight tracking-[-0.03em] text-ink ${
+          large ? 'text-2xl sm:text-4xl lg:text-5xl' : 'text-xl sm:text-3xl'
+        } ${item.prefix ? 'mt-2' : ''}`}
         style={{ fontVariantNumeric: 'tabular-nums' }}
       >
         {item.value}
       </p>
       <p className="mt-3 text-xs font-extrabold uppercase tracking-[0.12em] text-muted">{item.label}</p>
-      {item.detail && <p className="mt-1 max-w-xs text-sm leading-5 text-muted">{item.detail}</p>}
+      {item.detail && <p className="mt-1 max-w-xs break-words text-sm leading-5 text-muted">{item.detail}</p>}
     </motion.li>
   );
 }
@@ -109,14 +116,17 @@ export function OwnerStatRow({ items }) {
   const rest = items.filter((item) => !item.emphasis);
   const reservePrefix = lead.some((item) => item.prefix);
   const reduced = useReducedMotion();
+  const restCols = rest.length >= 3
+    ? 'grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3'
+    : 'grid-cols-1 gap-6 sm:grid-cols-2';
 
   return (
     <motion.div variants={reduced ? undefined : staggerContainer(0.05)} initial={reduced ? undefined : 'hidden'} animate={reduced ? undefined : 'show'}>
-      <ul className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8">
         {lead.map((item) => <StatFigure key={item.label} item={item} large reservePrefix={reservePrefix} />)}
       </ul>
       {rest.length > 0 && (
-        <ul className="mt-8 grid grid-cols-1 gap-6 border-t border-line pt-6 sm:grid-cols-3">
+        <ul className={`mt-6 grid border-t border-line pt-6 sm:mt-8 ${restCols}`}>
           {rest.map((item) => <StatFigure key={item.label} item={item} />)}
         </ul>
       )}
@@ -178,9 +188,14 @@ export function OwnerDialog({
   children,
   actions,
   fullScreenMobile = false,
+  fullScreenBreakpoint = 'sm',
   maxWidth = 'sm',
 }) {
   const reduced = useReducedMotion();
+  const theme = useTheme();
+  const bp = fullScreenBreakpoint === 'md' ? 'md' : 'sm';
+  const isCompact = useMediaQuery(theme.breakpoints.down(bp));
+  const fullScreen = fullScreenMobile && isCompact;
   const hasBody = children != null && children !== false;
   return (
     <Dialog
@@ -188,47 +203,83 @@ export function OwnerDialog({
       onClose={onClose}
       fullWidth
       maxWidth={maxWidth}
-      fullScreen={fullScreenMobile ? undefined : false}
+      fullScreen={fullScreen}
       sx={{
+        '@keyframes ownerDialogPop': {
+          from: { opacity: 0, transform: 'translateY(8px) scale(0.96)' },
+          to: { opacity: 1, transform: 'translateY(0) scale(1)' },
+        },
         '& .MuiDialog-paper': {
-          borderRadius: { xs: fullScreenMobile ? 0 : '16px', sm: '16px' },
-          m: { xs: fullScreenMobile ? 0 : 2, sm: 3 },
-          width: { xs: fullScreenMobile ? '100%' : 'calc(100% - 32px)', sm: undefined },
-          maxHeight: { xs: fullScreenMobile ? '100%' : 'calc(100% - 32px)', sm: 'calc(100% - 64px)' },
+          display: 'flex',
+          flexDirection: 'column',
+          borderRadius: fullScreen ? 0 : { xs: '16px', sm: '16px' },
+          m: fullScreen ? 0 : { xs: 2, sm: 3 },
+          width: fullScreen ? '100%' : { xs: 'calc(100% - 32px)', sm: undefined },
+          height: fullScreen ? '100%' : undefined,
+          maxHeight: fullScreen ? '100%' : { xs: 'calc(100% - 32px)', sm: 'calc(100% - 64px)' },
           overflow: 'hidden',
           bgcolor: 'background.paper',
           backgroundImage: 'none',
           boxShadow: '0 24px 48px rgba(9, 38, 54, 0.16)',
+          ...(reduced
+            ? {}
+            : {
+                animation: 'ownerDialogPop 0.22s cubic-bezier(0.22, 1, 0.36, 1)',
+              }),
         },
         ...(fullScreenMobile ? {
           '& .MuiDialog-container': {
-            alignItems: { xs: 'stretch', sm: 'center' },
+            alignItems: fullScreen ? 'stretch' : 'center',
           },
         } : {}),
       }}
-      slotProps={{
-        paper: {
-          component: motion.div,
-          variants: reduced ? reducedFade : dialogPop,
-          initial: 'hidden',
-          animate: 'show',
-          exit: 'exit',
-        },
-      }}
     >
-      <DialogTitle className="!px-5 !pb-2 !pt-5 !text-balance !break-words !text-lg !font-black !leading-snug !tracking-[-0.02em] !text-ink sm:!px-6 sm:!text-xl">
+      <DialogTitle
+        autoFocus
+        tabIndex={-1}
+        className="!shrink-0 !text-balance !break-words !text-lg !font-black !leading-snug !tracking-[-0.02em] !text-ink sm:!text-xl focus:outline-none"
+        sx={{
+          px: { xs: 2.5, sm: 3 },
+          pt: fullScreen
+            ? 'max(1.25rem, env(safe-area-inset-top))'
+            : { xs: 2.5, sm: 3 },
+          pb: 1,
+        }}
+      >
         {title}
       </DialogTitle>
       {description && (
-        <p className={`px-5 text-pretty text-sm leading-6 text-muted sm:px-6 ${hasBody ? 'pb-1' : 'pb-5'}`}>
+        <p className={`shrink-0 px-5 text-pretty text-sm leading-6 text-muted sm:px-6 ${hasBody ? 'pb-1' : 'pb-5'}`}>
           {description}
         </p>
       )}
       {hasBody && (
-        <DialogContent className="!px-5 !pt-3 sm:!px-6">{children}</DialogContent>
+        <DialogContent
+          className="!px-5 !pt-3 sm:!px-6"
+          sx={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {children}
+        </DialogContent>
       )}
       {actions && (
-        <DialogActions className="!m-0 !flex-col-reverse !items-stretch !gap-2 !border-0 !px-5 !pb-5 !pt-0 sm:!flex-row sm:!items-center sm:!justify-end sm:!px-6 sm:!pb-6">
+        <DialogActions
+          className="!m-0 !flex-col-reverse !items-stretch !gap-2 !border-0 !pt-3 sm:!flex-row sm:!items-center sm:!justify-end"
+          sx={{
+            flexShrink: 0,
+            px: { xs: 2.5, sm: 3 },
+            pb: fullScreen
+              ? 'max(1.25rem, env(safe-area-inset-bottom))'
+              : { xs: 2.5, sm: 3 },
+            borderTop: fullScreen ? '1px solid' : 'none',
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+          }}
+        >
           {actions}
         </DialogActions>
       )}
