@@ -57,7 +57,14 @@ export default function PremiumBusinessHero({ homepage, slides, fallbackImage, o
             dragConstraints={{ left: 0, right: 0 }}
             onDragEnd={(_, info) => { if (info.offset.x < -50) go(1); if (info.offset.x > 50) go(-1); }}
           >
-            <HeroBusinessSlide slide={slide} homepage={homepage} fallbackImage={fallbackImage} onExplore={onExplore} onSearch={onSearch} searchFilters={searchFilters} onSearchSubmit={onSearchSubmit} reduced={reduced} />
+            <HeroBusinessSlide
+              slide={slide}
+              homepage={homepage}
+              fallbackImage={fallbackImage}
+              onExplore={onExplore}
+              onSearch={onSearch}
+              filterProps={searchFilters}
+            />
           </motion.div>
         </AnimatePresence>
         {arrows && (
