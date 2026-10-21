@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { CssBaseline, ThemeProvider } from '@mui/material';
@@ -7,6 +7,9 @@ import queryClient from './lib/queryClient';
 import { createAppTheme } from './theme/muiTheme';
 import { useThemeMode } from './theme/ThemeModeContext';
 import RouteLoader from './components/ui/RouteLoader';
+import SplashScreen from './components/ui/SplashScreen';
+import logoMarkBrand from './assets/brand/logo-mark.png';
+import { markSplashSeen, shouldShowSplash } from './utils/splash';
 
 const Layout = lazy(() => import('./components/layout/Layout'));
 const ProtectedRoute = lazy(() => import('./components/layout/ProtectedRoute'));
@@ -169,11 +172,22 @@ const router = createBrowserRouter([
 export default function App() {
   const { resolvedMode } = useThemeMode();
   const theme = useMemo(() => createAppTheme(resolvedMode), [resolvedMode]);
+  const [showSplash, setShowSplash] = useState(() => shouldShowSplash());
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <Suspense fallback={<RouteLoader />}><RouterProvider router={router} /></Suspense>
+        {showSplash ? (
+          <SplashScreen
+            logoSrc={logoMarkBrand}
+            onComplete={() => {
+              markSplashSeen();
+              setShowSplash(false);
+            }}
+          />
+        ) : null}
         <Toaster position="top-right" richColors theme={resolvedMode} />
       </ThemeProvider>
     </QueryClientProvider>

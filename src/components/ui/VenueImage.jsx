@@ -1,3 +1,4 @@
+import React from 'react';
 import { mediaUrl } from '../../utils/mediaUrl';
 import SportIcon from './SportIcon';
 
