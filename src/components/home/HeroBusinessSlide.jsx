@@ -1,6 +1,13 @@
 import HomeHero from './HomeHero';
 
-export default function HeroBusinessSlide({ slide, homepage = {}, fallbackImage, onExplore, onSearch, searchFilters, onSearchSubmit }) {
+export default function HeroBusinessSlide({
+  slide,
+  homepage = {},
+  fallbackImage,
+  onExplore,
+  onSearch,
+  filterProps,
+}) {
   return (
     <HomeHero
       homepage={{
@@ -8,11 +15,13 @@ export default function HeroBusinessSlide({ slide, homepage = {}, fallbackImage,
         heading: homepage.heading || slide.headline,
         description: homepage.description || slide.description,
       }}
-      image={slide.imageUrl || fallbackImage}
+      image={slide.imageUrl || fallbackImage || undefined}
       imageAlt={slide.name || 'Sports venue'}
-      onExplore={slide?.businessId && onExplore ? () => onExplore(slide) : onSearch}
-      searchFilters={searchFilters}
-      onSearchSubmit={onSearchSubmit}
+      onBook={slide?.businessId && onExplore ? () => onExplore(slide) : onSearch}
+      onBrowseSports={() => {
+        document.getElementById('sports')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }}
+      filterProps={filterProps}
     />
   );
 }
