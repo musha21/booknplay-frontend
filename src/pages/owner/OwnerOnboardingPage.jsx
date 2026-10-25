@@ -305,12 +305,8 @@ export default function OwnerOnboardingPage() {
   return (
     <Box className="mx-auto max-w-5xl surface-card p-5 sm:p-8">
       <Typography variant="overline" color="text.secondary">Step {step + 1} of {STEPS.length}</Typography>
-      <LinearProgress variant="determinate" value={((step + 1) / STEPS.length) * 100} className="!mb-3 !rounded-full" />
-      <Stack direction="row" spacing={1} className="mb-6 overflow-x-auto">
-        {STEPS.map((label, i) => (
-          <Chip key={label} size="small" label={label} color={i === step ? 'primary' : 'default'} variant={i <= step ? 'filled' : 'outlined'} />
-        ))}
-      </Stack>
+      <Typography variant="subtitle1" fontWeight={800} className="!mt-1 !mb-2">{STEPS[step]}</Typography>
+      <LinearProgress variant="determinate" value={((step + 1) / STEPS.length) * 100} className="!mb-6 !rounded-full" />
       {error && <Alert severity="error" className="mb-4">{error}</Alert>}
 
       {step === 0 && (

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link as RouterLink, NavLink, useLocation } from 'react-router-dom';
+import { Link as RouterLink, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Button, Chip, MenuItem, Skeleton, TextField } from '@mui/material';
 import { Download, Refresh } from '@mui/icons-material';
 import EarningsTrendChart from '../../components/owner/EarningsTrendChart';
@@ -59,6 +59,16 @@ const sportColumns = [
   { key: 'net', label: 'Net', emphasize: true, render: (row) => `LKR ${formatReportLkr(row.net)}` },
 ];
 
+function reportsSectionPath(pathname = '') {
+  const path = pathname.replace(/\/$/, '') || '/owner/reports';
+  const match = SUBNAV.find((item) => (
+    item.end
+      ? path === item.to
+      : path === item.to || path.startsWith(`${item.to}/`)
+  ));
+  return match?.to || SUBNAV[0].to;
+}
+
 function ReportsShell({
   children,
   range,
@@ -77,6 +87,10 @@ function ReportsShell({
   onDownload,
   canDownload,
 }) {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const sectionPath = reportsSectionPath(pathname);
+
   return (
     <OwnerPage className="max-w-6xl">
       <OwnerPageHeader
@@ -91,13 +105,27 @@ function ReportsShell({
       />
       <div className="mt-6 flex flex-col gap-6 lg:flex-row">
         <aside className="w-full shrink-0 lg:w-56">
-          <nav className="flex gap-2 overflow-x-auto lg:flex-col" aria-label="Reports sections">
+          <TextField
+            select
+            label="Reports section"
+            size="small"
+            value={sectionPath}
+            onChange={(event) => navigate(event.target.value)}
+            fullWidth
+            className="lg:!hidden"
+            SelectProps={{ 'aria-label': 'Reports sections' }}
+          >
+            {SUBNAV.map((item) => (
+              <MenuItem key={item.to} value={item.to}>{item.label}</MenuItem>
+            ))}
+          </TextField>
+          <nav className="hidden flex-col gap-2 lg:flex" aria-label="Reports sections">
             {SUBNAV.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
-                className={({ isActive }) => `min-h-11 shrink-0 rounded-xl px-4 py-2.5 text-sm font-extrabold ${
+                className={({ isActive }) => `min-h-11 rounded-xl px-4 py-2.5 text-sm font-extrabold ${
                   isActive ? 'bg-navy-900 text-white dark:bg-lime-400 dark:text-navy-900' : 'text-muted hover:bg-canvas'
                 }`}
               >

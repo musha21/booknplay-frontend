@@ -189,6 +189,15 @@ export default function OwnerCalendarPage() {
     }
   };
 
+  const shiftDate = (delta) => {
+    const next = dayjs(date).add(delta, 'day');
+    setDate(next.format('YYYY-MM-DD'));
+    const windowEnd = rangeStart.add(STRIP_DAYS - 1, 'day');
+    if (next.isBefore(rangeStart, 'day') || next.isAfter(windowEnd, 'day')) {
+      setRangeStart(next.startOf('day'));
+    }
+  };
+
   const statusKey = panel ? slotStatus(panel.slot) : null;
   const status = statusKey ? (STATUS[statusKey] || STATUS.BOOKED) : null;
 
@@ -215,7 +224,19 @@ export default function OwnerCalendarPage() {
       </header>
 
       <div className="owner-calendar-controls">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2 md:hidden">
+          <Button aria-label="Previous day" variant="outlined" size="small" className="!min-w-10 !shrink-0 !px-0" onClick={() => shiftDate(-1)}>
+            <ArrowBack fontSize="small" />
+          </Button>
+          <p className="min-w-0 flex-1 truncate text-center text-sm font-extrabold text-ink">
+            {dayjs(date).format('ddd, D MMM YYYY')}
+          </p>
+          <Button aria-label="Next day" variant="outlined" size="small" className="!min-w-10 !shrink-0 !px-0" onClick={() => shiftDate(1)}>
+            <ArrowForward fontSize="small" />
+          </Button>
+        </div>
+
+        <div className="hidden min-w-0 items-center gap-2 md:flex">
           <Button aria-label="Previous week" variant="outlined" size="small" className="!min-w-10 !shrink-0 !px-0" onClick={() => moveStrip(-7)}>
             <ArrowBack fontSize="small" />
           </Button>
@@ -241,13 +262,28 @@ export default function OwnerCalendarPage() {
           <Button aria-label="Next week" variant="outlined" size="small" className="!min-w-10 !shrink-0 !px-0" onClick={() => moveStrip(7)}>
             <ArrowForward fontSize="small" />
           </Button>
-          <p className="hidden shrink-0 text-sm font-semibold text-ink sm:block">
+          <p className="hidden shrink-0 text-sm font-semibold text-ink lg:block">
             {dayjs(date).format('ddd, D MMM')}
           </p>
         </div>
 
         <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-line pt-2">
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Filter by bookable space">
+          <TextField
+            select
+            size="small"
+            label="Space"
+            value={effectiveCourtFilter}
+            onChange={(event) => setCourtFilter(event.target.value)}
+            fullWidth
+            className="md:!hidden"
+            SelectProps={{ 'aria-label': 'Filter by bookable space' }}
+          >
+            <MenuItem value="all">All spaces</MenuItem>
+            {courtCalendars.map((court) => (
+              <MenuItem key={court.courtId} value={court.courtId}>{court.courtName}</MenuItem>
+            ))}
+          </TextField>
+          <div className="hidden flex-wrap gap-1.5 md:flex" role="group" aria-label="Filter by bookable space">
             <button type="button" aria-pressed={effectiveCourtFilter === 'all'} onClick={() => setCourtFilter('all')} className={`calendar-filter ${effectiveCourtFilter === 'all' ? 'calendar-filter-active' : ''}`}>
               All
             </button>

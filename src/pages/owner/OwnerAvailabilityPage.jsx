@@ -8,13 +8,10 @@ import {
 import { useOwnerCalendar, useOwnerCourts, useOwnerVenues } from '../../hooks/useOwner';
 import { CalendarToday } from '@mui/icons-material';
 
-const STRIP = 7;
-
 export default function OwnerAvailabilityPage() {
   const { data: venues = [] } = useOwnerVenues(false);
   const [venueId, setVenueId] = useState('');
   const [courtId, setCourtId] = useState('');
-  const [rangeStart, setRangeStart] = useState(dayjs().startOf('day'));
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
   const courtsQuery = useOwnerCourts(venueId || undefined);
   const calendarQuery = useOwnerCalendar(venueId, date);
@@ -24,10 +21,9 @@ export default function OwnerAvailabilityPage() {
     if (!venueId && venues[0]) setVenueId(venues[0].id);
   }, [venues, venueId]);
 
-  const days = useMemo(
-    () => Array.from({ length: STRIP }, (_, i) => rangeStart.add(i, 'day')),
-    [rangeStart],
-  );
+  const shiftDate = (delta) => {
+    setDate(dayjs(date).add(delta, 'day').format('YYYY-MM-DD'));
+  };
 
   const courtBlocks = useMemo(() => {
     const list = calendarQuery.data?.courts || [];
@@ -56,7 +52,7 @@ export default function OwnerAvailabilityPage() {
       <OwnerPageHeader
         eyebrow="Operations"
         title="Availability"
-        description="Week strip from the calendar API."
+        description="Daily open and closed slots from the calendar API."
         actions={venueId ? (
           <RouterLink to={`/owner/venues/${venueId}/calendar`} className="btn-outline">
             Full calendar
@@ -74,27 +70,20 @@ export default function OwnerAvailabilityPage() {
       </OwnerSection>
 
       <OwnerSection className="mt-6">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          <button type="button" className="btn-outline shrink-0" onClick={() => setRangeStart((d) => d.subtract(STRIP, 'day'))}>←</button>
-          {days.map((day) => {
-            const key = day.format('YYYY-MM-DD');
-            const active = key === date;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setDate(key)}
-                className={`min-w-[72px] rounded-2xl border px-3 py-2 text-center text-sm font-bold ${
-                  active ? 'border-lime-400 bg-lime-400 text-navy-900' : 'border-line bg-surface text-ink'
-                }`}
-              >
-                <span className="block text-[10px] uppercase tracking-wider opacity-70">{day.format('ddd')}</span>
-                {day.format('D MMM')}
-              </button>
-            );
-          })}
-          <button type="button" className="btn-outline shrink-0" onClick={() => setRangeStart((d) => d.add(STRIP, 'day'))}>→</button>
+        <div className="flex max-w-2xl items-center gap-2">
+          <button type="button" className="btn-outline shrink-0 !min-w-11 !px-0" aria-label="Previous day" onClick={() => shiftDate(-1)}>←</button>
+          <TextField
+            type="date"
+            size="small"
+            label="Date"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+          />
+          <button type="button" className="btn-outline shrink-0 !min-w-11 !px-0" aria-label="Next day" onClick={() => shiftDate(1)}>→</button>
         </div>
+        <p className="mt-2 text-sm font-semibold text-muted">{dayjs(date).format('dddd, D MMM YYYY')}</p>
       </OwnerSection>
 
       <OwnerSection className="mt-6">

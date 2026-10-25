@@ -182,10 +182,10 @@
     @apply flex shrink-0 flex-col gap-2 rounded-2xl border border-line bg-surface p-2.5 sm:p-3;
   }
   .owner-calendar-days {
-    @apply flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5;
+    @apply flex min-w-0 flex-1 gap-1;
   }
   .owner-day-chip {
-    @apply flex min-w-[44px] flex-col items-center rounded-xl border border-line bg-canvas px-2 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-muted transition hover:border-navy-400 hover:bg-surface;
+    @apply flex min-w-0 flex-1 flex-col items-center rounded-xl border border-line bg-canvas px-1.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wide text-muted transition hover:border-navy-400 hover:bg-surface;
   }
   .owner-day-chip strong {
     @apply mt-0.5 text-sm font-black normal-case tracking-normal text-ink;
