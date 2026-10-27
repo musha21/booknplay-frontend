@@ -1,6 +1,24 @@
 import React, { useState } from 'react';
-import { Button, MenuItem, Select, TextField } from '@mui/material';
-import { setAdminVenueStatus, setBusinessAccess, setBusinessCommission, setBusinessSubscription } from '../../api/admin';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Select,
+  TextField,
+} from '@mui/material';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import {
+  createAdminBusiness,
+  exportAdminCustomers,
+  setAdminVenueStatus,
+  setBusinessAccess,
+  setBusinessCommission,
+  setBusinessSubscription,
+} from '../../api/admin';
 import {
   useAdminAction,
   useAdminAudit,
@@ -8,18 +26,38 @@ import {
   useAdminCustomers,
   useAdminSubscriptionPlans,
   useAdminVenues,
+  useSendAdminMarketing,
 } from '../../hooks/useAdmin';
 import { PlanCode, SubscriptionStatus } from '../../constants/apiTypes';
 import { planDisplayName, resolveTrialDurationDays, statusDisplayLabel } from '../../utils/subscription';
 import { VENUE_STATUS_OPTIONS, venueStatusLabel } from '../../utils/venueStatus';
 
-const Shell = ({ title, children }) => (
+const Shell = ({ title, actions, children }) => (
   <>
-    <p className="eyebrow">Platform management</p>
-    <h1 className="mt-2 text-3xl font-black">{title}</h1>
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="eyebrow">Platform management</p>
+        <h1 className="mt-2 text-3xl font-black">{title}</h1>
+      </div>
+      {actions}
+    </div>
     <div className="surface-card mt-7 overflow-x-auto">{children}</div>
   </>
 );
+
+const emptyCreateForm = () => ({
+  businessName: '',
+  ownerName: '',
+  email: '',
+  temporaryPassword: '',
+  contactPhone: '',
+  address: '',
+  contactEmail: '',
+  bankName: '',
+  bankAccountName: '',
+  bankAccountNumber: '',
+  bankBranch: '',
+});
 
 const Table = ({ head, children }) => (
   <table className="w-full min-w-[760px] text-left text-sm">
@@ -80,8 +118,13 @@ function CommissionCell({ business, onSave, pending }) {
 export function AdminBusinessesPage() {
   const { data = [] } = useAdminBusinesses();
   const { data: plans = [] } = useAdminSubscriptionPlans();
+  const queryClient = useQueryClient();
   const trialPlan = plans.find((plan) => String(plan.code).toUpperCase() === PlanCode.TRIAL);
   const trialDays = resolveTrialDurationDays(trialPlan?.trialDurationDays);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState(emptyCreateForm);
+  const [createdCredentials, setCreatedCredentials] = useState(null);
+
   const accessAction = useAdminAction(
     ({ id, params }) => setBusinessAccess(id, params),
     ['admin-businesses', 'admin-dashboard'],
@@ -94,9 +137,55 @@ export function AdminBusinessesPage() {
     ({ id, params }) => setBusinessCommission(id, params),
     ['admin-businesses', 'admin-dashboard'],
   );
+  const createAction = useMutation({
+    mutationFn: createAdminBusiness,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-businesses'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+      setCreateOpen(false);
+      setForm(emptyCreateForm());
+      setCreatedCredentials({
+        email: result.ownerEmail,
+        temporaryPassword: result.temporaryPassword,
+        businessName: result.name,
+      });
+      toast.success('Business created — share credentials with the owner only');
+    },
+    onError: (error) => toast.error(error.response?.data?.message || 'Could not create business'),
+  });
+
+  const setField = (key) => (event) => setForm((prev) => ({ ...prev, [key]: event.target.value }));
+
+  const submitCreate = (event) => {
+    event.preventDefault();
+    if (!form.temporaryPassword || form.temporaryPassword.length < 8) {
+      toast.error('Temporary password must be at least 8 characters');
+      return;
+    }
+    createAction.mutate({
+      businessName: form.businessName.trim(),
+      ownerName: form.ownerName.trim(),
+      email: form.email.trim(),
+      temporaryPassword: form.temporaryPassword,
+      contactPhone: form.contactPhone.trim(),
+      address: form.address.trim(),
+      contactEmail: form.contactEmail.trim() || undefined,
+      bankName: form.bankName.trim() || undefined,
+      bankAccountName: form.bankAccountName.trim() || undefined,
+      bankAccountNumber: form.bankAccountNumber.trim() || undefined,
+      bankBranch: form.bankBranch.trim() || undefined,
+    });
+  };
 
   return (
-    <Shell title="Businesses">
+    <Shell
+      title="Businesses"
+      actions={(
+        <Button variant="contained" onClick={() => setCreateOpen(true)}>
+          Create business
+        </Button>
+      )}
+    >
       <Table head={['Business', 'Owner', 'Venues', 'Commission', 'Subscription', 'Access']}>
         {data.map((x) => (
           <tr key={x.id}>
@@ -180,6 +269,72 @@ export function AdminBusinessesPage() {
           </tr>
         ))}
       </Table>
+
+      <Dialog open={createOpen} onClose={() => !createAction.isPending && setCreateOpen(false)} fullWidth maxWidth="sm">
+        <form onSubmit={submitCreate}>
+          <DialogTitle>Create business</DialogTitle>
+          <DialogContent className="!space-y-3 pt-2">
+            <p className="text-sm text-muted">
+              Provisions an owner login and business with a free trial. Share the temporary password with the owner only —
+              they can change it later in Profile. Self-register remains available for other owners.
+            </p>
+            <TextField label="Business name" value={form.businessName} onChange={setField('businessName')} required fullWidth />
+            <TextField label="Owner name" value={form.ownerName} onChange={setField('ownerName')} required fullWidth />
+            <TextField label="Owner email (login)" type="email" value={form.email} onChange={setField('email')} required fullWidth />
+            <TextField
+              label="Temporary password"
+              type="password"
+              value={form.temporaryPassword}
+              onChange={setField('temporaryPassword')}
+              required
+              fullWidth
+              helperText="Min 8 characters. Shown once after create."
+            />
+            <TextField label="Contact phone" value={form.contactPhone} onChange={setField('contactPhone')} required fullWidth placeholder="+9477..." />
+            <TextField label="Business address" value={form.address} onChange={setField('address')} required fullWidth />
+            <TextField label="Contact email (optional)" type="email" value={form.contactEmail} onChange={setField('contactEmail')} fullWidth />
+            <p className="pt-2 text-xs font-bold uppercase text-muted">Bank details (optional)</p>
+            <TextField label="Bank name" value={form.bankName} onChange={setField('bankName')} fullWidth />
+            <TextField label="Account holder" value={form.bankAccountName} onChange={setField('bankAccountName')} fullWidth />
+            <TextField label="Account number" value={form.bankAccountNumber} onChange={setField('bankAccountNumber')} fullWidth />
+            <TextField label="Branch" value={form.bankBranch} onChange={setField('bankBranch')} fullWidth />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setCreateOpen(false)} disabled={createAction.isPending}>Cancel</Button>
+            <Button type="submit" variant="contained" disabled={createAction.isPending}>
+              {createAction.isPending ? 'Creating…' : 'Create'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      <Dialog open={Boolean(createdCredentials)} onClose={() => setCreatedCredentials(null)} fullWidth maxWidth="sm">
+        <DialogTitle>Owner credentials</DialogTitle>
+        <DialogContent className="!space-y-3 pt-2">
+          <p className="text-sm text-muted">
+            Share with the owner of <strong>{createdCredentials?.businessName}</strong> only. This password is shown once.
+            They sign in at owner login and can change the password in Profile.
+          </p>
+          <TextField label="Email" value={createdCredentials?.email || ''} fullWidth InputProps={{ readOnly: true }} />
+          <TextField label="Temporary password" value={createdCredentials?.temporaryPassword || ''} fullWidth InputProps={{ readOnly: true }} />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={async () => {
+              const text = `Email: ${createdCredentials?.email}\nPassword: ${createdCredentials?.temporaryPassword}`;
+              try {
+                await navigator.clipboard.writeText(text);
+                toast.success('Copied credentials');
+              } catch {
+                toast.error('Could not copy — select and copy manually');
+              }
+            }}
+          >
+            Copy
+          </Button>
+          <Button variant="contained" onClick={() => setCreatedCredentials(null)}>Done</Button>
+        </DialogActions>
+      </Dialog>
     </Shell>
   );
 }
@@ -212,20 +367,129 @@ export function AdminVenuesPage() {
 }
 
 export function AdminCustomersPage() {
-  const { data = [] } = useAdminCustomers();
+  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState('');
+  const [dialog, setDialog] = useState(null); // 'SMS' | 'EMAIL' | null
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  const { data = [] } = useAdminCustomers(search ? { query: search } : {});
+  const marketing = useSendAdminMarketing();
+
+  const closeDialog = () => {
+    if (marketing.isPending) return;
+    setDialog(null);
+    setSubject('');
+    setMessage('');
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await exportAdminCustomers();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'customers.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Customer list exported');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleSend = () => {
+    if (!message.trim()) {
+      toast.error('Message is required');
+      return;
+    }
+    if (dialog === 'EMAIL' && !subject.trim()) {
+      toast.error('Subject is required for email');
+      return;
+    }
+    marketing.mutate(
+      {
+        channel: dialog,
+        subject: dialog === 'EMAIL' ? subject.trim() : undefined,
+        message: message.trim(),
+      },
+      { onSuccess: () => closeDialog() }
+    );
+  };
+
   return (
-    <Shell title="Customers">
-      <Table head={['Name', 'Email', 'Phone', 'Status']}>
-        {data.map((x) => (
-          <tr key={x.id}>
-            <td className="p-4 font-bold">{x.firstName} {x.lastName}</td>
-            <td className="p-4">{x.email}</td>
-            <td className="p-4">{x.phone}</td>
-            <td className="p-4">{x.status}</td>
-          </tr>
-        ))}
-      </Table>
-    </Shell>
+    <>
+      <Shell
+        title="Customers"
+        actions={(
+          <div className="flex flex-wrap items-center gap-2">
+            <TextField
+              size="small"
+              placeholder="Search name, email, phone"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setSearch(query.trim());
+              }}
+            />
+            <Button variant="outlined" onClick={() => setSearch(query.trim())}>Search</Button>
+            <Button variant="outlined" disabled={exporting} onClick={handleExport}>
+              {exporting ? 'Exporting…' : 'Export CSV'}
+            </Button>
+            <Button variant="contained" onClick={() => setDialog('SMS')}>Send SMS</Button>
+          </div>
+        )}
+      >
+        <Table head={['Name', 'Email', 'Phone', 'Status']}>
+          {data.map((x) => (
+            <tr key={x.id}>
+              <td className="p-4 font-bold">{x.firstName} {x.lastName}</td>
+              <td className="p-4">{x.email}</td>
+              <td className="p-4">{x.phone}</td>
+              <td className="p-4">{x.status}</td>
+            </tr>
+          ))}
+        </Table>
+      </Shell>
+
+      <Dialog open={Boolean(dialog)} onClose={closeDialog} fullWidth maxWidth="sm">
+        <DialogTitle>{dialog === 'SMS' ? 'Send marketing SMS' : 'Send marketing email'}</DialogTitle>
+        <DialogContent className="!space-y-3 pt-2">
+          <p className="text-sm text-slate-600">
+            Sends to all ACTIVE registered customers
+            {dialog === 'SMS' ? ' with a phone number' : ' with an email address'}.
+          </p>
+          {dialog === 'EMAIL' && (
+            <TextField
+              label="Subject"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              required
+              fullWidth
+            />
+          )}
+          <TextField
+            label="Message"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            required
+            fullWidth
+            multiline
+            minRows={4}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDialog} disabled={marketing.isPending}>Cancel</Button>
+          <Button variant="contained" onClick={handleSend} disabled={marketing.isPending}>
+            {marketing.isPending ? 'Sending…' : 'Send'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
 

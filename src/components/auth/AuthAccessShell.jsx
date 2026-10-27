@@ -1,8 +1,8 @@
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
 import BrandLogo from '../ui/BrandLogo';
 import ThemeToggle from '../ui/ThemeToggle';
-import LoginRoleSwitch from './LoginRoleSwitch';
 import SportsEquipment from './SportsEquipment';
 import useEquipmentMotion from './useEquipmentMotion';
 
@@ -26,7 +26,7 @@ const HERO = {
 
 export default function AuthAccessShell({
   role = 'customer',
-  mode = 'login',
+  mode: _mode = 'login',
   kicker,
   title,
   subtitle,
@@ -38,9 +38,10 @@ export default function AuthAccessShell({
   const equipment = useEquipmentMotion();
   const still = equipment.still;
   const admin = role === 'admin';
-  const partnerTo = role === 'owner' ? '/auth/login' : '/owner/register';
-  const partnerLabel = role === 'owner' ? 'Sign in as a player' : 'Partner with us';
-  const partnerPrompt = role === 'owner' ? 'Looking to play?' : 'Own a venue?';
+  const owner = role === 'owner';
+  // Customer auth screens stay customer-only (no owner/admin CTAs).
+  // Owner shell may offer a path back to player login; admin stays invite/URL-only.
+  const showPlayerLink = owner;
 
   return (
     <main className={`auth-access${admin ? ' is-admin' : ''}${still ? ' is-still' : ''}`}>
@@ -69,7 +70,11 @@ export default function AuthAccessShell({
       </section>
       <section className="auth-form-panel">
         <header className="auth-topbar">
-          <Link to={partnerTo}>{partnerPrompt} <strong>{partnerLabel} ↗</strong></Link>
+          {showPlayerLink ? (
+            <Link to="/auth/login">Looking to play? <strong>Sign in as a player ↗</strong></Link>
+          ) : (
+            <span className="auth-topbar-spacer" aria-hidden="true" />
+          )}
         </header>
         <motion.div
           className="auth-form-wrap"
@@ -77,7 +82,6 @@ export default function AuthAccessShell({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reduced ? 0 : 0.65, delay: reduced ? 0 : 0.15, ease: 'easeOut' }}
         >
-          {role !== 'admin' && <LoginRoleSwitch mode={mode} />}
           <p className="auth-kicker">{kicker}</p>
           <h2>{title}</h2>
           <p className="auth-subtitle">{subtitle}</p>
@@ -92,7 +96,6 @@ export default function AuthAccessShell({
         </motion.div>
         <footer className="auth-footer">
           <span>© 2026 BooknPlay</span>
-          {role !== 'admin' && <Link to="/admin/login">Platform admin ↗</Link>}
           <span className="auth-secure">Your game starts here</span>
         </footer>
       </section>

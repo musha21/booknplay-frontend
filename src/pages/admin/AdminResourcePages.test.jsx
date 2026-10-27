@@ -9,8 +9,10 @@ const adminMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../api/admin', () => ({
+  createAdminBusiness: vi.fn(),
   setAdminVenueStatus: vi.fn(),
   setBusinessAccess: vi.fn(),
+  setBusinessCommission: vi.fn(),
   setBusinessSubscription: vi.fn(),
 }));
 

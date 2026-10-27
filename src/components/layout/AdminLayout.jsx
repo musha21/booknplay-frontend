@@ -132,7 +132,7 @@ export default function AdminLayout() {
           <strong className="min-w-0 flex-1 truncate">Platform control centre</strong>
           <ThemeToggle />
         </header>
-        <div className="p-4 sm:p-7">
+        <div className="min-w-0 max-w-full overflow-x-clip p-4 sm:p-7">
           <Outlet />
         </div>
       </main>

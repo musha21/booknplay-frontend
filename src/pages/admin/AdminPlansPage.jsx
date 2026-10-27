@@ -191,8 +191,8 @@ export default function AdminPlansPage() {
       {isLoading || !draft || !selected ? (
         <Skeleton className="!mt-7" variant="rounded" height={420} />
       ) : (
-        <div className="mt-7 grid gap-6 lg:grid-cols-[240px_1fr]">
-          <div className="surface-card p-4">
+        <div className="mt-7 grid min-w-0 gap-6 lg:grid-cols-[240px_1fr]">
+          <div className="surface-card min-w-0 p-4">
             <p className="text-xs font-extrabold uppercase tracking-wider text-muted">Plans</p>
             <div className="mt-3 flex flex-col gap-2">
               {plans.map((plan) => {
@@ -217,9 +217,9 @@ export default function AdminPlansPage() {
             </div>
           </div>
 
-          <div className="surface-card space-y-5 p-5 sm:p-6">
+          <div className="surface-card min-w-0 space-y-5 p-5 sm:p-6">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-xl font-black text-ink">{draft.name || planDisplayName(selected.code)}</h2>
                 <p className="mt-1 text-sm text-muted">
                   {formatCurrency(Number(draft.priceMonthly) || 0, draft.currency)} / month

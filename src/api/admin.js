@@ -6,6 +6,8 @@ export const adminLogin = (payload) => data(apiClient.post('/admin/auth/login', 
 export const adminLogout = (refreshToken) => data(apiClient.post('/admin/auth/logout', { refreshToken }, { skipAuthRefresh: true }));
 export const getAdminDashboard = () => data(apiClient.get('/admin/dashboard'));
 export const getAdminBusinesses = (params) => data(apiClient.get('/admin/businesses', { params }));
+/** Admin provisions owner + business + trial. Body includes temporaryPassword; response echoes it once. */
+export const createAdminBusiness = (payload) => data(apiClient.post('/admin/businesses', payload));
 export const setBusinessAccess = (id, params) => data(apiClient.patch(`/admin/businesses/${id}/access`, null, { params }));
 export const setBusinessCommission = (id, params) => data(apiClient.patch(`/admin/businesses/${id}/commission`, null, { params }));
 /** Admin override: extend trial or force a plan. Body: { planCode?, status?, trialEndsAt?, reason } */
@@ -17,6 +19,13 @@ export const updateAdminSubscriptionPlan = (code, payload) => data(apiClient.put
 export const getAdminVenues = (params) => data(apiClient.get('/admin/venues', { params }));
 export const setAdminVenueStatus = (id, params) => data(apiClient.patch(`/admin/venues/${id}/status`, null, { params }));
 export const getAdminCustomers = (params) => data(apiClient.get('/admin/customers', { params }));
+/** CSV download of all non-deleted registered customers. */
+export const exportAdminCustomers = () =>
+  apiClient
+    .get('/admin/customers/export', { responseType: 'blob' })
+    .then((response) => response.data);
+/** Broadcast marketing SMS and/or email to ACTIVE customers. */
+export const sendAdminMarketing = (payload) => data(apiClient.post('/admin/customers/marketing', payload));
 export const getAdminAudit = (params) => data(apiClient.get('/admin/audit', { params }));
 export const getHomepageDraft = () => data(apiClient.get('/admin/homepage'));
 export const saveHomepageDraft = (payload) => data(apiClient.put('/admin/homepage/draft', payload));

@@ -12,8 +12,25 @@ export function useAdminLogin() {
 export const useAdminDashboard = () => useQuery({ queryKey: ['admin-dashboard'], queryFn: api.getAdminDashboard });
 export const useAdminBusinesses = () => useQuery({ queryKey: ['admin-businesses'], queryFn: () => api.getAdminBusinesses({ size: 100, sort: 'createdAt,desc' }), select: (value) => value?.content || [] });
 export const useAdminVenues = () => useQuery({ queryKey: ['admin-venues'], queryFn: () => api.getAdminVenues({ size: 100, sort: 'createdAt,desc' }), select: (value) => value?.content || [] });
-export const useAdminCustomers = () => useQuery({ queryKey: ['admin-customers'], queryFn: () => api.getAdminCustomers({ size: 100 }), select: (value) => value?.content || [] });
+export const useAdminCustomers = (params = {}) => useQuery({
+  queryKey: ['admin-customers', params],
+  queryFn: () => api.getAdminCustomers({ size: 100, ...params }),
+  select: (value) => value?.content || [],
+});
 export const useAdminAudit = () => useQuery({ queryKey: ['admin-audit'], queryFn: () => api.getAdminAudit({ size: 100 }), select: (value) => value?.content || [] });
+export function useSendAdminMarketing() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: api.sendAdminMarketing,
+    onSuccess: (result) => {
+      client.invalidateQueries({ queryKey: ['admin-audit'] });
+      toast.success(
+        `Sent ${result?.sent ?? 0} · skipped ${result?.skipped ?? 0} · failed ${result?.failed ?? 0}`
+      );
+    },
+    onError: (error) => toast.error(error.response?.data?.message || 'Marketing send failed'),
+  });
+}
 export const useAdminSubscriptionPlans = () => useQuery({
   queryKey: ['admin-subscription-plans'],
   queryFn: api.getAdminSubscriptionPlans,

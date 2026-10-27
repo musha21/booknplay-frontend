@@ -28,7 +28,7 @@ export default function AccountPage() {
           </div>
         </header>
         <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-          <nav aria-label="Account navigation" className="customer-panel overflow-x-auto p-2 lg:h-fit">
+          <nav aria-label="Account navigation" className="customer-panel hidden overflow-x-auto p-2 lg:block lg:h-fit">
             <div className="flex min-w-max gap-1 lg:min-w-0 lg:flex-col">
               {items.map(([label, to, Icon]) => {
                 const active = pathname === to || (to.endsWith('/bookings') && pathname === '/account');
