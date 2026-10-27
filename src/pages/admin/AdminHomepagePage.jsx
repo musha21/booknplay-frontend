@@ -143,21 +143,21 @@ function HomepageEditor({ initial, refetch }) {
   };
 
   return (
-    <div>
+    <div className="min-w-0 max-w-full">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="eyebrow">Customer experience</p>
           <h1 className="mt-2 text-3xl font-black">Homepage editor</h1>
           <p className="mt-2 text-sm text-muted">Draft changes stay private until you publish.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={save} disabled={saving}>Save draft</Button>
           <Button variant="contained" color="secondary" onClick={publish} disabled={saving}>Publish</Button>
         </div>
       </div>
-      <div className="mt-7 grid gap-6 xl:grid-cols-[1fr_.9fr]">
-        <div className="space-y-5">
-          <section className="surface-card space-y-4 p-6">
+      <div className="mt-7 grid min-w-0 gap-6 xl:grid-cols-[1fr_.9fr]">
+        <div className="min-w-0 space-y-5">
+          <section className="surface-card min-w-0 space-y-4 p-4 sm:p-6">
             <h2 className="text-lg font-black">Hero</h2>
             <TextField fullWidth label="Eyebrow" value={form.eyebrow || ''} onChange={(e) => set('eyebrow', e.target.value)} />
             <TextField fullWidth required label="Heading" value={form.heading || ''} onChange={(e) => set('heading', e.target.value)} />
@@ -165,39 +165,39 @@ function HomepageEditor({ initial, refetch }) {
             <FormControlLabel control={<Checkbox checked={form.showSearch} onChange={(e) => set('showSearch', e.target.checked)} />} label="Show search controls" />
           </section>
 
-          <section className="surface-card space-y-4 p-6">
-            <div className="flex items-center justify-between gap-3">
+          <section className="surface-card min-w-0 space-y-4 p-4 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-black">Premium courts</h2>
               <Button size="small" startIcon={<Add />} disabled={form.premiumSlides.length >= 5} onClick={() => { set('premiumSlides', [...form.premiumSlides, emptySlide()]); setSelectedSlide(form.premiumSlides.length); }}>Add slide</Button>
             </div>
             <FormControlLabel control={<Checkbox checked={form.premiumSliderEnabled !== false} onChange={(e) => set('premiumSliderEnabled', e.target.checked)} />} label="Enable premium courts" />
             {form.premiumSlides.map((item, index) => (
-              <button key={item.id || index} type="button" onClick={() => setSelectedSlide(index)} className={`flex w-full items-center justify-between rounded-xl border p-3 text-left ${selectedSlide === index ? 'border-lime-400' : 'border-line'}`}>
-                <span className="text-sm font-bold">{item.name || businesses.find((b) => b.id === item.businessId)?.name || item.headline || `Slide ${index + 1}`}</span>
-                <span className="text-xs text-muted">{item.enabled === false ? 'Off' : 'On'}</span>
+              <button key={item.id || index} type="button" onClick={() => setSelectedSlide(index)} className={`flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border p-3 text-left ${selectedSlide === index ? 'border-lime-400' : 'border-line'}`}>
+                <span className="min-w-0 truncate text-sm font-bold">{item.name || businesses.find((b) => b.id === item.businessId)?.name || item.headline || `Slide ${index + 1}`}</span>
+                <span className="shrink-0 text-xs text-muted">{item.enabled === false ? 'Off' : 'On'}</span>
               </button>
             ))}
             {slide && (
-              <div className="space-y-3 rounded-2xl border border-line p-4">
-                <div className="flex gap-2">
-                  <Button size="small" onClick={() => moveSlide(selectedSlide, -1)}><ArrowUpward fontSize="small" /></Button>
-                  <Button size="small" onClick={() => moveSlide(selectedSlide, 1)}><ArrowDownward fontSize="small" /></Button>
-                  <Button size="small" color="error" startIcon={<Delete />} onClick={() => { set('premiumSlides', form.premiumSlides.filter((_, index) => index !== selectedSlide)); setSelectedSlide(0); }}>Remove</Button>
+              <div className="min-w-0 space-y-3 rounded-2xl border border-line p-3 sm:p-4">
+                <div className="flex flex-wrap gap-2">
+                  <Button size="small" className="!min-w-0" onClick={() => moveSlide(selectedSlide, -1)}><ArrowUpward fontSize="small" /></Button>
+                  <Button size="small" className="!min-w-0" onClick={() => moveSlide(selectedSlide, 1)}><ArrowDownward fontSize="small" /></Button>
+                  <Button size="small" color="error" className="!min-w-0" startIcon={<Delete />} onClick={() => { set('premiumSlides', form.premiumSlides.filter((_, index) => index !== selectedSlide)); setSelectedSlide(0); }}>Remove</Button>
                 </div>
                 <TextField select fullWidth label="Business" value={slide.businessId || ''} onChange={(e) => updateSlide(selectedSlide, { businessId: e.target.value })}>
                   {eligibleBusinesses.map((business) => <MenuItem key={business.id} value={business.id}>{business.name}</MenuItem>)}
                 </TextField>
                 <FormControlLabel control={<Checkbox checked={slide.enabled !== false} onChange={(e) => updateSlide(selectedSlide, { enabled: e.target.checked })} />} label="Enable this slide" />
                 <TextField fullWidth label="Promotional headline" value={slide.headline || ''} onChange={(e) => updateSlide(selectedSlide, { headline: e.target.value })} />
-                <div className="space-y-2 rounded-xl border border-line p-3">
+                <div className="min-w-0 space-y-2 rounded-xl border border-line p-3">
                   <p className="text-sm font-bold">Slide image</p>
                   {slide.imageUrl ? (
-                    <img src={mediaUrl(slide.imageUrl)} alt="Slide preview" className="h-36 w-full rounded-lg object-cover" />
+                    <img src={mediaUrl(slide.imageUrl)} alt="Slide preview" className="h-36 w-full max-w-full rounded-lg object-cover" />
                   ) : (
                     <div className="flex h-36 items-center justify-center rounded-lg bg-canvas text-sm text-muted">Automatic business image</div>
                   )}
                   <div className="flex flex-wrap gap-2">
-                    <Button component="label" size="small" disabled={uploadingSlideImage}>
+                    <Button component="label" size="small" className="!min-w-0" disabled={uploadingSlideImage}>
                       {uploadingSlideImage ? 'Uploading…' : 'Upload slide image'}
                       <input
                         hidden
@@ -211,7 +211,7 @@ function HomepageEditor({ initial, refetch }) {
                       />
                     </Button>
                     {slide.imageUrl ? (
-                      <Button size="small" color="inherit" disabled={uploadingSlideImage} onClick={() => updateSlide(selectedSlide, { imageUrl: '' })}>
+                      <Button size="small" color="inherit" className="!min-w-0" disabled={uploadingSlideImage} onClick={() => updateSlide(selectedSlide, { imageUrl: '' })}>
                         Use automatic
                       </Button>
                     ) : null}
@@ -231,57 +231,65 @@ function HomepageEditor({ initial, refetch }) {
                     {slideImageSelectValue === '__custom__' && (
                       <MenuItem value="__custom__">Custom upload</MenuItem>
                     )}
-                    {businessImageOptions.map((url) => (
-                      <MenuItem key={url} value={url}>{url}</MenuItem>
-                    ))}
+                    {businessImageOptions.map((url, index) => {
+                      const isLogo = Boolean(slideBusiness?.logoUrl) && url === slideBusiness.logoUrl;
+                      const imageIndex = businessImageOptions
+                        .slice(0, index + 1)
+                        .filter((option) => option !== slideBusiness?.logoUrl).length;
+                      return (
+                        <MenuItem key={url} value={url}>
+                          {isLogo ? 'Logo' : `Business image ${imageIndex}`}
+                        </MenuItem>
+                      );
+                    })}
                   </TextField>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <TextField type="date" label="Start date" value={slide.startsAt || ''} onChange={(e) => updateSlide(selectedSlide, { startsAt: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
-                  <TextField type="date" label="Expiry date" value={slide.expiresAt || ''} onChange={(e) => updateSlide(selectedSlide, { expiresAt: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                  <TextField fullWidth type="date" label="Start date" value={slide.startsAt || ''} onChange={(e) => updateSlide(selectedSlide, { startsAt: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
+                  <TextField fullWidth type="date" label="Expiry date" value={slide.expiresAt || ''} onChange={(e) => updateSlide(selectedSlide, { expiresAt: e.target.value })} slotProps={{ inputLabel: { shrink: true } }} />
                 </div>
               </div>
             )}
           </section>
 
-          <section className="surface-card p-6">
+          <section className="surface-card min-w-0 p-4 sm:p-6">
             <h2 className="text-lg font-black">Sections and order</h2>
             <div className="mt-4 space-y-2">
               {form.sectionOrder.map((section, index) => (
-                <div key={section} className="flex items-center gap-2 rounded-xl border border-line p-2">
+                <div key={section} className="flex min-w-0 items-center gap-2 rounded-xl border border-line p-2">
                   <Checkbox checked={form[flagFor[section]]} onChange={(e) => set(flagFor[section], e.target.checked)} />
-                  <span className="flex-1 text-sm font-bold">{SECTION_LABELS[section]}</span>
-                  <Button size="small" aria-label="Move up" onClick={() => move(index, -1)}><ArrowUpward fontSize="small" /></Button>
-                  <Button size="small" aria-label="Move down" onClick={() => move(index, 1)}><ArrowDownward fontSize="small" /></Button>
+                  <span className="min-w-0 flex-1 truncate text-sm font-bold">{SECTION_LABELS[section]}</span>
+                  <Button size="small" className="!min-w-0" aria-label="Move up" onClick={() => move(index, -1)}><ArrowUpward fontSize="small" /></Button>
+                  <Button size="small" className="!min-w-0" aria-label="Move down" onClick={() => move(index, 1)}><ArrowDownward fontSize="small" /></Button>
                 </div>
               ))}
             </div>
           </section>
-          <section className="surface-card space-y-5 p-6">
+          <section className="surface-card min-w-0 space-y-5 p-4 sm:p-6">
             <h2 className="text-lg font-black">Featured content</h2>
-            <div><label className="field-label">Businesses</label><Select multiple fullWidth value={form.featuredBusinessIds || []} onChange={(e) => set('featuredBusinessIds', e.target.value)}>{businesses.map((x) => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</Select></div>
-            <div><label className="field-label">Venues</label><Select multiple fullWidth value={form.featuredVenueIds || []} onChange={(e) => set('featuredVenueIds', e.target.value)}>{venues.map((x) => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</Select></div>
-            <div><label className="field-label">Sports</label><Select multiple fullWidth value={form.featuredSportIds || []} onChange={(e) => set('featuredSportIds', e.target.value)}>{sports.map((x) => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</Select></div>
+            <div className="min-w-0"><label className="field-label">Businesses</label><Select multiple fullWidth value={form.featuredBusinessIds || []} onChange={(e) => set('featuredBusinessIds', e.target.value)}>{businesses.map((x) => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</Select></div>
+            <div className="min-w-0"><label className="field-label">Venues</label><Select multiple fullWidth value={form.featuredVenueIds || []} onChange={(e) => set('featuredVenueIds', e.target.value)}>{venues.map((x) => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</Select></div>
+            <div className="min-w-0"><label className="field-label">Sports</label><Select multiple fullWidth value={form.featuredSportIds || []} onChange={(e) => set('featuredSportIds', e.target.value)}>{sports.map((x) => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</Select></div>
           </section>
         </div>
-        <aside className="xl:sticky xl:top-6 xl:self-start">
-          <div className="overflow-hidden rounded-[28px] border border-line bg-surface shadow-xl">
-            <div className="flex items-center justify-between border-b border-line bg-canvas px-5 py-3 text-xs font-extrabold uppercase tracking-wider text-muted">
-              <span>Customer preview · Draft v{form.version}</span>
-              <div className="flex gap-2">
-                <Button size="small" onClick={() => set('previewMode', 'mobile')}>Mobile</Button>
-                <Button size="small" onClick={() => set('previewMode', 'desktop')}>Desktop</Button>
+        <aside className="min-w-0 xl:sticky xl:top-6 xl:self-start">
+          <div className="min-w-0 overflow-hidden rounded-[28px] border border-line bg-surface shadow-xl">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-line bg-canvas px-3 py-3 text-xs font-extrabold uppercase tracking-wider text-muted sm:px-5">
+              <span className="min-w-0 truncate">Customer preview · Draft v{form.version}</span>
+              <div className="flex flex-wrap gap-2">
+                <Button size="small" className="!min-w-0" onClick={() => set('previewMode', 'mobile')}>Mobile</Button>
+                <Button size="small" className="!min-w-0" onClick={() => set('previewMode', 'desktop')}>Desktop</Button>
               </div>
             </div>
-            <div className={`p-7 ${form.previewMode === 'mobile' ? 'max-w-sm' : ''}`}>
-              <div>
+            <div className={`min-w-0 p-4 sm:p-7 ${form.previewMode === 'mobile' ? 'max-w-sm' : ''}`}>
+              <div className="min-w-0">
                 <p className="eyebrow">{form.eyebrow}</p>
-                <h2 className="mt-3 text-4xl font-black leading-tight tracking-[-.04em]">{form.heading}</h2>
+                <h2 className="mt-3 text-2xl font-black leading-tight tracking-[-.04em] sm:text-4xl">{form.heading}</h2>
                 <p className="mt-4 leading-7 text-muted">{form.description}</p>
               </div>
               {form.showSearch && <div className="mt-6 grid grid-cols-3 gap-2 rounded-2xl border border-line bg-canvas p-3"><span className="rounded-lg bg-surface p-3 text-xs">Sport</span><span className="rounded-lg bg-surface p-3 text-xs">Location</span><span className="rounded-lg bg-lime-400 p-3 text-center text-xs font-bold text-navy-900">Search</span></div>}
             </div>
-            <div className="space-y-2 border-t border-line p-5">{form.sectionOrder.filter((s) => form[flagFor[s]]).map((s) => <div key={s} className="rounded-xl bg-canvas p-4 text-sm font-bold">{SECTION_LABELS[s]}</div>)}</div>
+            <div className="space-y-2 border-t border-line p-4 sm:p-5">{form.sectionOrder.filter((s) => form[flagFor[s]]).map((s) => <div key={s} className="rounded-xl bg-canvas p-4 text-sm font-bold">{SECTION_LABELS[s]}</div>)}</div>
           </div>
         </aside>
       </div>

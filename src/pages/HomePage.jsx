@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Bolt, CalendarMonth, Verified } from '@mui/icons-material';
 import { Skeleton } from '@mui/material';
 import { toast } from 'sonner';
@@ -107,7 +107,6 @@ const venueMatchesCourt = (venue, sport, facility) => {
 };
 
 export default function HomePage() {
-  const navigate = useNavigate();
   const [urlParams] = useSearchParams();
   const sportsQuery = useSports();
   useBusinesses();
@@ -493,20 +492,6 @@ export default function HomePage() {
                 <div><h3>{title}</h3><p>{copy}</p></div>
               </div>
             ))}
-          </div>
-        </section>
-      )}
-
-      {homepage.showOwnerPromotion !== false && (
-        <section className="hp-partner" style={{ order: orderOf('ownerPromotion') }}>
-          <div>
-            <p className="hp-eyebrow">For the people behind the courts</p>
-            <h2>Your venue.<br />Their next great game.</h2>
-            <p>Bring your courts, calendar and bookings together. Give more players a place to play.</p>
-          </div>
-          <div className="hp-partner-action">
-            <span className="hp-partner-symbol" aria-hidden="true">↗</span>
-            <button type="button" className="hp-button hp-lime" onClick={() => navigate('/owner/register')}>List your venue <span aria-hidden="true">→</span></button>
           </div>
         </section>
       )}

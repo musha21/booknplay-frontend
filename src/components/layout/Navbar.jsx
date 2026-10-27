@@ -9,7 +9,6 @@ import ThemeToggle from '../ui/ThemeToggle';
 
 const links = [
   { to: '/#venues', label: 'Explore venues' },
-  { to: '/owner/register', label: 'List a venue' },
 ];
 
 export default function Navbar() {
@@ -41,7 +40,6 @@ export default function Navbar() {
           </nav>
           <div className="hp-header-actions">
             <ThemeToggle />
-            <Link to="/owner/register" className="hp-partner-link">List your venue <span aria-hidden="true">↗</span></Link>
             {isAuthenticated ? (
               <>
                 <button type="button" className="hp-account" onClick={(event) => setAnchorEl(event.currentTarget)} aria-label="Open account menu">
@@ -108,7 +106,6 @@ export default function Navbar() {
             {isAuthenticated ? <Button variant="outlined" color="error" onClick={handleLogout} startIcon={<Logout />}>Sign out</Button> : <>
               <Button component={Link} to="/auth/login" onClick={closeAll} variant="outlined" startIcon={<Login />}>Log in</Button>
               <Button component={Link} to="/auth/register" onClick={closeAll} variant="contained" color="secondary" startIcon={<PersonAdd />}>Create account</Button>
-              <Button component={Link} to="/owner/register" onClick={closeAll}>List your venue</Button>
             </>}
           </div>
         </Drawer>

@@ -4,7 +4,6 @@ import BrandLogo from '../ui/BrandLogo';
 
 const groups = [
   { title: 'Explore', items: [['Venues in Kandy', '/#venues'], ['Available today', '/#venues'], ['My bookings', '/account/bookings']] },
-  { title: 'Partners', items: [['List your venue', '/owner/register'], ['Partner login', '/owner/login'], ['Owner dashboard', '/owner']] },
   { title: 'Support', items: [['Help centre', '/account/help'], ['Privacy controls', '/account/privacy'], ['Contact us', 'mailto:support@booknplay.lk']] },
 ];
 
