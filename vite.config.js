@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'icons/*', 'offline.html'],
       manifest: {
@@ -17,6 +20,13 @@ export default defineConfig({
         display: 'standalone',
         background_color: '#FBFCF8',
         theme_color: '#C7F84B',
+        prefer_related_applications: false,
+        related_applications: [
+          {
+            platform: 'webapp',
+            url: '/manifest.webmanifest',
+          },
+        ],
         icons: [
           {
             src: '/icons/pwa-192x192.png',
@@ -36,9 +46,7 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        navigateFallback: '/offline.html',
-        navigateFallbackDenylist: [/^\/api/, /\/api\/v1/],
+      injectManifest: {
         // Shell assets only — do not add runtimeCaching for API/auth/payment hosts.
         // Skip large marketing images (>2 MiB) so they are never forced into the precache.
         globPatterns: ['**/*.{js,css,html,ico,svg,woff2}', 'icons/**/*.png'],

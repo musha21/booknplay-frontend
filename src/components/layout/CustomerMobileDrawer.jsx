@@ -3,6 +3,7 @@ import { Avatar, Divider, Drawer, IconButton } from '@mui/material';
 import {
   CalendarDays,
   Compass,
+  Download,
   Heart,
   HelpCircle,
   History,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import { revokeAndClearSession } from '../../lib/signOut';
 import useAuthStore from '../../stores/authStore';
+import usePwaInstall from '../../hooks/usePwaInstall';
 import BrandLogo from '../ui/BrandLogo';
 import {
   CUSTOMER_DRAWER_GROUPS,
@@ -40,6 +42,7 @@ export default function CustomerMobileDrawer({ open, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { customer, isAuthenticated } = useAuthStore();
+  const { shouldOfferInstall, promptInstall } = usePwaInstall();
 
   const go = (to, requiresAuth) => {
     onClose();
@@ -130,6 +133,25 @@ export default function CustomerMobileDrawer({ open, onClose }) {
           </div>
         ))}
       </nav>
+
+      {shouldOfferInstall && (
+        <>
+          <Divider />
+          <div className="customer-mobile-drawer__auth">
+            <button
+              type="button"
+              className="customer-mobile-drawer__link"
+              onClick={async () => {
+                onClose();
+                await promptInstall();
+              }}
+            >
+              <Download size={18} aria-hidden="true" />
+              <span>Install App</span>
+            </button>
+          </div>
+        </>
+      )}
 
       <Divider />
 
