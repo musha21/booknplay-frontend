@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Button, Divider, Drawer, IconButton, ListItemIcon, ListItemText, Menu, MenuItem } from '@mui/material';
-import { ArrowOutward, Close, EventNote, Favorite, Login, Logout, Menu as MenuIcon, Person, PersonAdd } from '@mui/icons-material';
+import { ArrowOutward, Close, EventNote, Favorite, GetApp, Login, Logout, Menu as MenuIcon, Person, PersonAdd } from '@mui/icons-material';
 import { revokeAndClearSession } from '../../lib/signOut';
 import useAuthStore from '../../stores/authStore';
+import usePwaInstall from '../../hooks/usePwaInstall';
 import BrandLogo from '../ui/BrandLogo';
 import ThemeToggle from '../ui/ThemeToggle';
 
@@ -15,6 +16,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { customer, isAuthenticated } = useAuthStore();
+  const { shouldOfferInstall, promptInstall } = usePwaInstall();
   const [anchorEl, setAnchorEl] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isHome = location.pathname === '/';
@@ -23,6 +25,10 @@ export default function Navbar() {
     closeAll();
     const path = await revokeAndClearSession('CUSTOMER');
     navigate(path);
+  };
+  const handleInstall = async () => {
+    closeAll();
+    await promptInstall();
   };
 
   return (
@@ -50,12 +56,25 @@ export default function Navbar() {
                   <MenuItem onClick={() => { closeAll(); navigate('/account/profile'); }}><ListItemIcon><Person fontSize="small" /></ListItemIcon><ListItemText>My profile</ListItemText></MenuItem>
                   <MenuItem onClick={() => { closeAll(); navigate('/account/favourites'); }}><ListItemIcon><Favorite fontSize="small" /></ListItemIcon><ListItemText>Favourites</ListItemText></MenuItem>
                   <MenuItem onClick={() => { closeAll(); navigate('/account/bookings'); }}><ListItemIcon><EventNote fontSize="small" /></ListItemIcon><ListItemText>My bookings</ListItemText></MenuItem>
+                  {shouldOfferInstall && (
+                    <MenuItem onClick={handleInstall}>
+                      <ListItemIcon><GetApp fontSize="small" /></ListItemIcon>
+                      <ListItemText>Install App</ListItemText>
+                    </MenuItem>
+                  )}
                   <Divider />
                   <MenuItem onClick={handleLogout} className="!text-red-500"><ListItemIcon><Logout className="!text-red-500" fontSize="small" /></ListItemIcon><ListItemText>Sign out</ListItemText></MenuItem>
                 </Menu>
               </>
             ) : (
-              <Link to="/auth/login" className="hp-sign-in">Sign in <ArrowOutward fontSize="small" /></Link>
+              <>
+                {shouldOfferInstall && (
+                  <button type="button" className="hp-sign-in" onClick={handleInstall} aria-label="Install App">
+                    Install App <GetApp fontSize="small" />
+                  </button>
+                )}
+                <Link to="/auth/login" className="hp-sign-in">Sign in <ArrowOutward fontSize="small" /></Link>
+              </>
             )}
             <button type="button" className="hp-menu-toggle" aria-expanded={mobileOpen} aria-label={mobileOpen ? 'Close menu' : 'Open menu'} onClick={() => setMobileOpen((open) => !open)}>
               {mobileOpen ? <Close /> : <MenuIcon />}
@@ -78,12 +97,25 @@ export default function Navbar() {
                   <MenuItem onClick={() => { closeAll(); navigate('/account/profile'); }}><ListItemIcon><Person fontSize="small" /></ListItemIcon><ListItemText>My profile</ListItemText></MenuItem>
                   <MenuItem onClick={() => { closeAll(); navigate('/account/favourites'); }}><ListItemIcon><Favorite fontSize="small" /></ListItemIcon><ListItemText>Favourites</ListItemText></MenuItem>
                   <MenuItem onClick={() => { closeAll(); navigate('/account/bookings'); }}><ListItemIcon><EventNote fontSize="small" /></ListItemIcon><ListItemText>My bookings</ListItemText></MenuItem>
+                  {shouldOfferInstall && (
+                    <MenuItem onClick={handleInstall}>
+                      <ListItemIcon><GetApp fontSize="small" /></ListItemIcon>
+                      <ListItemText>Install App</ListItemText>
+                    </MenuItem>
+                  )}
                   <Divider />
                   <MenuItem onClick={handleLogout} className="!text-red-500"><ListItemIcon><Logout className="!text-red-500" fontSize="small" /></ListItemIcon><ListItemText>Sign out</ListItemText></MenuItem>
                 </Menu>
               </>
             ) : (
-              <Button component={Link} to="/auth/login" variant="text" startIcon={<Login />} className="!hidden lg:!inline-flex">Sign in</Button>
+              <>
+                {shouldOfferInstall && (
+                  <Button variant="text" startIcon={<GetApp />} className="!hidden lg:!inline-flex" onClick={handleInstall}>
+                    Install App
+                  </Button>
+                )}
+                <Button component={Link} to="/auth/login" variant="text" startIcon={<Login />} className="!hidden lg:!inline-flex">Sign in</Button>
+              </>
             )}
             <IconButton aria-label="Open menu" onClick={() => setMobileOpen(true)} className="!rounded-full !border !border-line !bg-surface lg:!hidden">
               <MenuIcon />
@@ -100,6 +132,9 @@ export default function Navbar() {
           <nav className="mobile-nav-links" aria-label="Mobile">
             {links.map((link) => <Link key={link.to} to={link.to} onClick={closeAll}>{link.label}</Link>)}
             {isAuthenticated && <Link to="/account/bookings" onClick={closeAll}>My bookings</Link>}
+            {shouldOfferInstall && (
+              <button type="button" onClick={handleInstall}>Install App</button>
+            )}
           </nav>
           <div className="mobile-nav-actions">
             <div className="mobile-nav-appearance">Appearance <ThemeToggle /></div>
