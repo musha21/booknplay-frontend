@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { publishHomepage, saveHomepageDraft, uploadPremiumSlideImage } from '../../api/admin';
 import { useAdminBusinesses, useAdminVenues, useHomepageDraft } from '../../hooks/useAdmin';
 import { useSports } from '../../hooks/useVenues';
+import { inferShapeFromSportName, PARTICLE_SHAPE_OPTIONS } from '../../components/sports-particles/sportShapeMap';
+import SportIcon from '../../components/ui/SportIcon';
 import mediaUrl from '../../utils/mediaUrl';
 
 const SECTION_LABELS = { sports: 'Sports', businesses: 'Featured businesses', venues: 'Featured venues', cities: 'Cities', howItWorks: 'How it works', ownerPromotion: 'Owner promotion', trust: 'Trust indicators' };
@@ -38,6 +40,7 @@ function HomepageEditor({ initial, refetch }) {
     ...initial,
     premiumSlides: initial.premiumSlides?.length ? initial.premiumSlides : [],
     premiumSliderEnabled: initial.premiumSliderEnabled !== false,
+    sportParticleShapes: initial.sportParticleShapes || {},
     previewMode: 'desktop',
   });
   const [saving, setSaving] = useState(false);
@@ -83,6 +86,7 @@ function HomepageEditor({ initial, refetch }) {
     featuredBusinessIds: form.featuredBusinessIds,
     featuredVenueIds: form.featuredVenueIds,
     featuredSportIds: form.featuredSportIds,
+    sportParticleShapes: form.sportParticleShapes || {},
     premiumSliderEnabled: form.premiumSliderEnabled !== false,
     premiumSliderAutoplay: true,
     premiumSliderSeconds: 6,
@@ -270,6 +274,59 @@ function HomepageEditor({ initial, refetch }) {
             <div className="min-w-0"><label className="field-label">Businesses</label><Select multiple fullWidth value={form.featuredBusinessIds || []} onChange={(e) => set('featuredBusinessIds', e.target.value)}>{businesses.map((x) => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</Select></div>
             <div className="min-w-0"><label className="field-label">Venues</label><Select multiple fullWidth value={form.featuredVenueIds || []} onChange={(e) => set('featuredVenueIds', e.target.value)}>{venues.map((x) => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</Select></div>
             <div className="min-w-0"><label className="field-label">Sports</label><Select multiple fullWidth value={form.featuredSportIds || []} onChange={(e) => set('featuredSportIds', e.target.value)}>{sports.map((x) => <MenuItem key={x.id} value={x.id}>{x.name}</MenuItem>)}</Select></div>
+          </section>
+
+          <section className="surface-card min-w-0 space-y-4 p-4 sm:p-6">
+            <div>
+              <h2 className="text-lg font-black">Particle shapes</h2>
+              <p className="mt-1 text-sm text-muted">
+                Map every sport icon to the equipment shape shown in the homepage morph. Featured sports still control which icons appear; this map controls the particle for each sport.
+              </p>
+            </div>
+            {sports.length === 0 ? (
+              <p className="text-sm text-muted">No sports loaded yet.</p>
+            ) : (
+              <div className="min-w-0 space-y-3">
+                {sports.map((sport) => {
+                  const sportId = sport.id;
+                  const sportName = sport.displayName || sport.name || String(sportId);
+                  const current =
+                    form.sportParticleShapes?.[sportId]
+                    || form.sportParticleShapes?.[String(sportId)]
+                    || inferShapeFromSportName(sportName);
+                  return (
+                    <div
+                      key={sportId}
+                      className="flex min-w-0 flex-col gap-3 rounded-2xl border border-line p-3 sm:flex-row sm:items-center"
+                    >
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-canvas text-navy-900">
+                          <SportIcon name={sportName} size={22} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold">{sportName}</p>
+                          <p className="truncate text-xs text-muted">Sport icon → particle shape</p>
+                        </div>
+                      </div>
+                      <TextField
+                        select
+                        className="min-w-0 sm:w-56"
+                        label="Particle shape"
+                        value={current}
+                        onChange={(e) => set('sportParticleShapes', {
+                          ...(form.sportParticleShapes || {}),
+                          [sportId]: e.target.value,
+                        })}
+                      >
+                        {PARTICLE_SHAPE_OPTIONS.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                        ))}
+                      </TextField>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </div>
         <aside className="min-w-0 xl:sticky xl:top-6 xl:self-start">

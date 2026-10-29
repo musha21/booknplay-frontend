@@ -10,6 +10,7 @@ import PublicPromotionsStrip from '../components/home/PublicPromotionsStrip';
 import VenueShowcase from '../components/home/VenueShowcase';
 import MobileAppBanner from '../components/home/MobileAppBanner';
 import { SportCategoryGrid } from '../components/home/SportCategoryButton';
+import SportsParticleMorph from '../components/sports-particles/SportsParticleMorph';
 import heroArena from '../assets/brand/midnight-multisport-arena.png';
 
 const AccordionGallery = lazy(() => import('../components/ui/AccordionGallery'));
@@ -378,6 +379,11 @@ export default function HomePage() {
             </div>
             <p className="hp-section-note">A little competition. A lot of good times.</p>
           </div>
+          <SportsParticleMorph
+            selectedSportId={activeSport?.all ? '' : (activeSport?.id || selectedSportId || '')}
+            selectedSportName={activeSport?.all ? '' : (activeSport?.displayName || activeSport?.name || '')}
+            sportParticleShapes={homepage.sportParticleShapes || {}}
+          />
           <SportCategoryGrid
             sports={showcaseSports}
             sportId={selectedSportId}

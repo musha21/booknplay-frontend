@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { LocationOff, MyLocation, Tune } from '@mui/icons-material';
 import Search from '@mui/icons-material/Search';
@@ -126,84 +126,86 @@ export default function HomeFilterBar({
             </select>
           </div>
 
-          {/* 5. Use my location */}
-          <div className="hp-filter-action">
-            <button
-              type="button"
-              onClick={onFetchLocation}
-              disabled={locationStatus === 'loading'}
-              title={hasLocation ? 'Location active' : 'Use my location'}
-              aria-label={
-                locationStatus === 'loading'
-                  ? 'Locating'
-                  : hasLocation
-                    ? 'Location active'
-                    : 'Use my location'
-              }
-              className={`min-h-[44px] px-3 sm:px-4 py-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 border transition duration-200 whitespace-nowrap ${
-                hasLocation
-                  ? 'bg-slate-900 text-lime-400 border-slate-900 dark:bg-slate-800 dark:border-slate-700'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-lime-500'
-              }`}
-            >
-              <MyLocation className={`text-base ${locationStatus === 'loading' ? 'animate-spin text-lime-400' : ''}`} fontSize="small" />
-              <span className="hidden sm:inline">
-                {locationStatus === 'loading'
-                  ? 'Locating…'
-                  : hasLocation
-                    ? 'Location Active'
-                    : 'Use my location'}
-              </span>
-            </button>
-          </div>
-
-          {/* 6. Find Venue CTA */}
-          <div className="hp-filter-action">
-            <button
-              type="button"
-              onClick={() => onFindVenue?.()}
-              className="min-h-[44px] px-4 sm:px-5 py-2 rounded-xl bg-lime-500 hover:bg-lime-600 text-gray-900 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition duration-200 shadow-sm"
-            >
-              <Search fontSize="small" />
-              <span>Find Venue</span>
-            </button>
-          </div>
-
-          {/* 7. Compact Filter Toggle Button */}
-          <div className="hp-filter-action">
-            <button
-              type="button"
-              id="home-filter-toggle"
-              aria-expanded={isPanelOpen}
-              aria-controls="advanced-filter-panel"
-              aria-label="Advanced filters"
-              title="Advanced filters"
-              onClick={onTogglePanel}
-              className={`min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition duration-200 shadow-sm relative ${
-                isPanelOpen || activeCount > 0
-                  ? 'bg-lime-400 text-slate-900 hover:bg-lime-500 ring-2 ring-lime-400'
-                  : 'bg-lime-400 text-slate-900 hover:bg-lime-500'
-              }`}
-            >
-              <Tune fontSize="small" />
-              {activeCount > 0 && (
-                <span className="inline-flex items-center justify-center bg-slate-900 text-lime-400 text-[10px] font-black rounded-full h-4 min-w-[16px] px-0.5">
-                  {activeCount}
+          <div className="hp-filter-actions">
+            {/* 5. Use my location */}
+            <div className="hp-filter-action">
+              <button
+                type="button"
+                onClick={onFetchLocation}
+                disabled={locationStatus === 'loading'}
+                title={hasLocation ? 'Location active' : 'Use my location'}
+                aria-label={
+                  locationStatus === 'loading'
+                    ? 'Locating'
+                    : hasLocation
+                      ? 'Location active'
+                      : 'Use my location'
+                }
+                className={`min-h-[44px] px-3 sm:px-4 py-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 border transition duration-200 whitespace-nowrap ${
+                  hasLocation
+                    ? 'bg-slate-900 text-lime-400 border-slate-900 dark:bg-slate-800 dark:border-slate-700'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-lime-500'
+                }`}
+              >
+                <MyLocation className={`text-base ${locationStatus === 'loading' ? 'animate-spin text-lime-400' : ''}`} fontSize="small" />
+                <span className="hidden sm:inline">
+                  {locationStatus === 'loading'
+                    ? 'Locating…'
+                    : hasLocation
+                      ? 'Location Active'
+                      : 'Use my location'}
                 </span>
-              )}
-            </button>
-          </div>
+              </button>
+            </div>
 
-          {/* 8. Reset Filters Button — icon-only */}
-          <div className="hp-filter-action">
-            <IconButton
-              onClick={onResetFilters}
-              title="Reset filters"
-              aria-label="Reset filters"
-              className="!w-11 !h-11 !rounded-xl !bg-slate-100 dark:!bg-slate-800 hover:!bg-slate-200 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-200 !border !border-slate-200 dark:!border-slate-700"
-            >
-              <RestartAlt fontSize="small" />
-            </IconButton>
+            {/* 6. Find Venue CTA */}
+            <div className="hp-filter-action">
+              <button
+                type="button"
+                onClick={() => onFindVenue?.()}
+                className="min-h-[44px] px-4 sm:px-5 py-2 rounded-xl bg-lime-500 hover:bg-lime-600 text-gray-900 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition duration-200 shadow-sm"
+              >
+                <Search fontSize="small" />
+                <span>Find Venue</span>
+              </button>
+            </div>
+
+            {/* 7. Compact Filter Toggle Button */}
+            <div className="hp-filter-action">
+              <button
+                type="button"
+                id="home-filter-toggle"
+                aria-expanded={isPanelOpen}
+                aria-controls="advanced-filter-panel"
+                aria-label="Advanced filters"
+                title="Advanced filters"
+                onClick={onTogglePanel}
+                className={`min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition duration-200 shadow-sm relative ${
+                  isPanelOpen || activeCount > 0
+                    ? 'bg-lime-400 text-slate-900 hover:bg-lime-500 ring-2 ring-lime-400'
+                    : 'bg-lime-400 text-slate-900 hover:bg-lime-500'
+                }`}
+              >
+                <Tune fontSize="small" />
+                {activeCount > 0 && (
+                  <span className="inline-flex items-center justify-center bg-slate-900 text-lime-400 text-[10px] font-black rounded-full h-4 min-w-[16px] px-0.5">
+                    {activeCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* 8. Reset Filters Button — icon-only */}
+            <div className="hp-filter-action">
+              <IconButton
+                onClick={onResetFilters}
+                title="Reset filters"
+                aria-label="Reset filters"
+                className="!w-11 !h-11 !rounded-xl !bg-slate-100 dark:!bg-slate-800 hover:!bg-slate-200 dark:hover:!bg-slate-700 !text-slate-700 dark:!text-slate-200 !border !border-slate-200 dark:!border-slate-700"
+              >
+                <RestartAlt fontSize="small" />
+              </IconButton>
+            </div>
           </div>
         </div>
 
